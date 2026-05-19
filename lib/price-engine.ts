@@ -23,7 +23,7 @@ export function computeBetaVirtual(args: {
   sensitivity?: number; // default 0.3
   anchorLambda?: number;
 }): number {
-  const { prevVirtual, prevReal, curReal } = args;
+  const { prevVirtual, prevReal, curReal, netPressure } = args;
   const sens = args.sensitivity ?? 0.3;
   const lambda = args.anchorLambda ?? ANCHOR_LAMBDA;
   if (prevReal <= 0) return curReal;
