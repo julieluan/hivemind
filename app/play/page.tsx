@@ -13,6 +13,7 @@ import type {
 } from "@/lib/types";
 import { computeIndicators } from "@/lib/price-engine";
 import { HIVE_AGENTS_BY_ID, fmtMoney, isDeception } from "@/lib/agent-meta";
+import { StreamlitChart, type RangeKey, type Overlay } from "@/components/StreamlitChart";
 
 // ────────────────────────────────────────────────────────────────
 // Top-level helpers
@@ -151,83 +152,94 @@ function VoiceCard({
 }
 
 // ────────────────────────────────────────────────────────────────
-// Price chart — same as Streamlit (lookback, today's open marker)
+// Range pills — 1M / 3M / 1Y / 5Y / Sim radio
 // ────────────────────────────────────────────────────────────────
 
-function PriceChart({
-  history,
-  todayOpen,
+function RangePills({
+  value,
+  onChange,
 }: {
-  history: PriceBar[];
-  todayOpen?: number;
+  value: RangeKey;
+  onChange: (v: RangeKey) => void;
 }) {
-  const W = 720;
-  const H = 320;
-  const pad = { top: 16, right: 14, bottom: 28, left: 52 };
-  const innerW = W - pad.left - pad.right;
-  const innerH = H - pad.top - pad.bottom;
-
-  if (history.length < 2 && !todayOpen) {
-    return (
-      <div className="bg-white border border-[var(--grid)] rounded-md p-12 text-center text-xs text-[var(--faint)] font-mono">
-        loading market data…
-      </div>
-    );
-  }
-  const series = todayOpen
-    ? [...history, { date: "today", open: todayOpen, high: todayOpen, low: todayOpen, close: todayOpen, volume: 0 } as PriceBar]
-    : history;
-  const ys = series.map((b) => b.close);
-  let yMin = Math.min(...ys);
-  let yMax = Math.max(...ys);
-  const padY = (yMax - yMin) * 0.08 || 1;
-  yMin -= padY;
-  yMax += padY;
-  const x = (i: number) => pad.left + (i / Math.max(series.length - 1, 1)) * innerW;
-  const y = (v: number) => pad.top + (1 - (v - yMin) / (yMax - yMin)) * innerH;
-  const path = series.map((b, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(b.close).toFixed(1)}`).join(" ");
-  const yTicks = Array.from({ length: 5 }, (_, i) => yMin + (i / 4) * (yMax - yMin));
-  const todayIdx = todayOpen ? series.length - 1 : -1;
-
+  const opts: RangeKey[] = ["1M", "3M", "1Y", "5Y", "Sim"];
   return (
-    <div className="bg-white border border-[var(--grid)] rounded-md p-2">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="w-full">
-        {yTicks.map((t, i) => (
-          <g key={i}>
-            <line x1={pad.left} y1={y(t)} x2={pad.left + innerW} y2={y(t)} stroke="var(--grid)" strokeWidth={0.5} />
-            <text x={pad.left - 6} y={y(t) + 3} fontSize={10} textAnchor="end" fill="var(--muted)" fontFamily="-apple-system, sans-serif">
-              ${t.toFixed(0)}
-            </text>
-          </g>
-        ))}
-        <path d={path} stroke="#0a0a0a" strokeWidth={2} fill="none" />
-        {todayIdx >= 0 && (
-          <>
-            <circle cx={x(todayIdx)} cy={y(series[todayIdx].close)} r={6} fill="#3b82f6">
-              <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
-            </circle>
-            <circle cx={x(todayIdx)} cy={y(series[todayIdx].close)} r={3.5} fill="#3b82f6" />
-          </>
-        )}
-        {/* x-axis: first / mid / last */}
-        {[0, Math.floor(series.length / 2), series.length - 1].map((i) =>
-          i >= 0 && i < series.length ? (
-            <text
-              key={i}
-              x={x(i)}
-              y={pad.top + innerH + 18}
-              fontSize={10}
-              textAnchor="middle"
-              fill="var(--muted)"
-              fontFamily="-apple-system, sans-serif"
-            >
-              {series[i].date}
-            </text>
-          ) : null
-        )}
-      </svg>
+    <div className="inline-flex border border-[var(--border)] rounded-md overflow-hidden bg-white">
+      {opts.map((o) => {
+        const on = value === o;
+        return (
+          <button
+            key={o}
+            onClick={() => onChange(o)}
+            className={`px-3 py-1 text-xs font-semibold transition-colors ${
+              on
+                ? "bg-[var(--ink)] text-white"
+                : "text-[var(--muted)] hover:text-[var(--ink)]"
+            }`}
+          >
+            {o}
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+function OverlayChips({
+  value,
+  onChange,
+}: {
+  value: Overlay[];
+  onChange: (v: Overlay[]) => void;
+}) {
+  const opts: Overlay[] = ["SMA20", "BB", "RSI", "MACD", "Volume"];
+  const toggle = (o: Overlay) =>
+    onChange(value.includes(o) ? value.filter((x) => x !== o) : [...value, o]);
+  return (
+    <div className="inline-flex gap-1 flex-wrap">
+      {opts.map((o) => {
+        const on = value.includes(o);
+        return (
+          <button
+            key={o}
+            onClick={() => toggle(o)}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors ${
+              on
+                ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                : "bg-white text-[var(--muted)] border-[var(--border)] hover:border-[var(--ink)]"
+            }`}
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
+// Indicator pills under chart
+// ────────────────────────────────────────────────────────────────
+
+function Pill({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  color?: string;
+}) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5 px-2.5 py-1 mr-1.5 mb-1.5 bg-[var(--bg-soft)] border border-[var(--grid)] rounded-md text-[0.82rem]">
+      <span className="text-[var(--muted)] font-medium">{label}</span>
+      <span className="font-semibold num" style={{ color: color || "var(--ink)" }}>
+        {value}
+      </span>
+      {sub && <span className="text-[var(--muted)] text-[0.75rem]">{sub}</span>}
+    </span>
   );
 }
 
@@ -250,6 +262,8 @@ export default function PlayPage() {
   const [allPrices, setAllPrices] = useState<PriceBar[] | null>(null);
   const [pricesError, setPricesError] = useState<string | null>(null);
   const [agentStatus, setAgentStatus] = useState<string>("");
+  const [range, setRange] = useState<RangeKey>("3M");
+  const [overlays, setOverlays] = useState<Overlay[]>(["RSI", "Volume"]);
 
   useEffect(() => {
     if (!session) router.replace("/");
@@ -338,7 +352,26 @@ export default function PlayPage() {
   const unreal = u && u.shares > 0 && u.costBasis > 0 ? (fill / u.costBasis - 1) * 100 : 0;
   const maxBuyShares = u && fill > 0 ? Math.floor(u.cash / fill) : 0;
 
-  const visibleHistory = useMemo(() => tradingPrices.slice(0, Math.max(0, dayIdx)), [tradingPrices, dayIdx]);
+  // Indicators for the pills row (uses closes strictly before today, like Streamlit)
+  const indicatorRow = useMemo(() => {
+    if (!allPrices || !todayBar) return null;
+    const closes = allPrices.filter((p) => p.date < todayBar.date).map((b) => b.close);
+    return computeIndicators(closes);
+  }, [allPrices, todayBar]);
+
+  const userTradeMarks = useMemo(
+    () =>
+      session?.trades.map((t) => ({
+        day: t.date,
+        fillPrice: t.fillPrice,
+        userBuyUsd: t.action.includes("buy") ? t.amountUsd : 0,
+        userSellUsd: t.action.includes("sell") ? t.amountUsd : 0,
+      })) ?? [],
+    [session]
+  );
+
+  const simStart = tradingPrices[0]?.date ?? "";
+  const simEnd = tradingPrices[tradingPrices.length - 1]?.date ?? "";
 
   const rankedDecisions = useMemo(() => {
     if (!today) return [];
@@ -484,7 +517,76 @@ export default function PlayPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-[1.55fr_1fr] gap-6">
             <div>
-              <PriceChart history={visibleHistory} todayOpen={fill > 0 ? fill : undefined} />
+              {/* Range + overlay controls (inline above chart) */}
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <RangePills value={range} onChange={setRange} />
+                <OverlayChips value={overlays} onChange={setOverlays} />
+              </div>
+
+              {allPrices && todayBar ? (
+                <StreamlitChart
+                  fullHistory={allPrices}
+                  simStartDate={simStart || todayBar.date}
+                  simEndDate={simEnd || todayBar.date}
+                  todayDate={todayBar.date}
+                  todayOpen={fill > 0 ? fill : null}
+                  range={range}
+                  overlays={overlays}
+                  userTrades={userTradeMarks}
+                />
+              ) : (
+                <div className="bg-white border border-[var(--grid)] rounded-md p-12 text-center text-xs text-[var(--faint)] font-mono">
+                  loading market data…
+                </div>
+              )}
+
+              {/* Indicator pills */}
+              {indicatorRow && indicatorRow.sma20 != null && (
+                <div className="mt-2 flex flex-wrap">
+                  {indicatorRow.rsi14 != null && (
+                    <Pill
+                      label="RSI(14)"
+                      value={indicatorRow.rsi14.toFixed(0)}
+                      color={
+                        indicatorRow.rsi14 > 70
+                          ? "var(--loss)"
+                          : indicatorRow.rsi14 < 30
+                            ? "var(--gain)"
+                            : "var(--ink)"
+                      }
+                    />
+                  )}
+                  {indicatorRow.macdHist != null && (
+                    <Pill
+                      label="MACD hist"
+                      value={`${indicatorRow.macdHist >= 0 ? "+" : ""}${indicatorRow.macdHist.toFixed(2)}`}
+                      sub={indicatorRow.macdDir === "bull" ? "▲" : indicatorRow.macdDir === "bear" ? "▼" : "—"}
+                      color={indicatorRow.macdHist > 0 ? "var(--gain)" : "var(--loss)"}
+                    />
+                  )}
+                  {indicatorRow.sma20 != null && (
+                    <Pill label="SMA20" value={`$${indicatorRow.sma20.toFixed(2)}`} />
+                  )}
+                  {indicatorRow.mom5d != null && (
+                    <Pill
+                      label="5d mom"
+                      value={`${indicatorRow.mom5d >= 0 ? "+" : ""}${indicatorRow.mom5d.toFixed(2)}%`}
+                      color={indicatorRow.mom5d > 0 ? "var(--gain)" : "var(--loss)"}
+                    />
+                  )}
+                  {indicatorRow.vol_ann != null && (
+                    <Pill label="Ann vol" value={`${indicatorRow.vol_ann.toFixed(1)}%`} />
+                  )}
+                  {indicatorRow.bbUpper != null && indicatorRow.bbLower != null &&
+                    indicatorRow.bbUpper !== indicatorRow.bbLower && fill > 0 && (
+                      <Pill
+                        label="BB"
+                        value={`${(((fill - indicatorRow.bbLower) / (indicatorRow.bbUpper - indicatorRow.bbLower)) * 100).toFixed(0)}% band`}
+                      />
+                    )}
+                </div>
+              )}
+
               {pricesError && (
                 <div className="text-xs text-[var(--loss)] mt-2">⚠ {pricesError}</div>
               )}
