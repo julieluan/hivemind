@@ -14,34 +14,68 @@ import type {
 import { computeIndicators } from "@/lib/price-engine";
 import { HIVE_AGENTS_BY_ID, fmtMoney, isDeception } from "@/lib/agent-meta";
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-function StepLabel({ n, children, muted }: { n: number; children: React.ReactNode; muted?: boolean }) {
+// ────────────────────────────────────────────────────────────────
+// Top-level helpers
+// ────────────────────────────────────────────────────────────────
+
+function Metric({
+  label,
+  value,
+  delta,
+  deltaColor,
+}: {
+  label: string;
+  value: string;
+  delta?: string;
+  deltaColor?: string;
+}) {
   return (
-    <div className="flex items-center gap-2 mb-3 mt-6 pb-2 border-b border-[var(--border)]">
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-[0.06em] text-[var(--muted)] font-medium">
+        {label}
+      </div>
+      <div className="text-[1.5rem] font-bold leading-tight tracking-tight num mt-0.5">
+        {value}
+      </div>
+      {delta && (
+        <div className="text-[0.82rem] num mt-0.5" style={{ color: deltaColor || "var(--muted)" }}>
+          {delta}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionLabel({
+  n,
+  children,
+  muted,
+}: {
+  n: number;
+  children: React.ReactNode;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3 mt-6 pb-2 border-b border-[var(--grid)]">
       <span
-        className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${
-          muted ? "bg-[var(--faint)] text-white" : "bg-[var(--ink)] text-white"
+        className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold flex-shrink-0 ${
+          muted ? "bg-[#cbd5e1] text-[#475569]" : "bg-[var(--ink)] text-white"
         }`}
       >
         {n}
       </span>
-      <span className="text-xs uppercase tracking-[0.08em] font-semibold text-[var(--muted)]">{children}</span>
+      <span className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)]">
+        {children}
+      </span>
     </div>
   );
 }
 
-function Metric({ label, value, delta, deltaColor }: { label: string; value: string; delta?: string; deltaColor?: string }) {
-  return (
-    <div className="flex-1 min-w-[110px]">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] font-medium">{label}</div>
-      <div className="text-xl font-bold mt-0.5 num">{value}</div>
-      {delta && <div className="text-xs mt-0.5 num" style={{ color: deltaColor || "var(--muted)" }}>{delta}</div>}
-    </div>
-  );
-}
+// ────────────────────────────────────────────────────────────────
+// Voice card (matches Streamlit voice-block + private reveal)
+// ────────────────────────────────────────────────────────────────
 
-// ── Voice card ──────────────────────────────────────────────────────────────
-function VoiceCardCompact({
+function VoiceCard({
   decision,
   peeked,
   peeksLeft,
@@ -58,113 +92,149 @@ function VoiceCardCompact({
   const priv = decision.privateBelief;
   const act = decision.personalAction;
   const deception = isDeception(pub.statedLean, pub.statedConviction, priv.lean, priv.conviction);
+
   const leanColor = (l: string) =>
-    l === "long" ? "text-[var(--gain)]" : l === "short" ? "text-[var(--loss)]" : "text-[var(--muted)]";
+    l === "long" ? "var(--gain)" : l === "short" ? "var(--loss)" : "var(--muted)";
+  const actLabel: Record<string, string> = {
+    buy_strong: "Buy max",
+    buy_lite: "Buy",
+    hold: "Hold",
+    sell_lite: "Sell",
+    sell_strong: "Sell all",
+  };
   const actColor = act.actionType.includes("buy")
-    ? "text-[var(--gain)]"
+    ? "var(--gain)"
     : act.actionType.includes("sell")
-      ? "text-[var(--loss)]"
-      : "text-[var(--muted)]";
+      ? "var(--loss)"
+      : "var(--muted)";
 
   return (
-    <div className="border-b border-[var(--grid)] py-3">
-      <div className="flex items-baseline justify-between gap-2 mb-1">
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="font-semibold text-sm">{meta.name}</span>
-            <span className="text-[11px] text-[var(--faint)]">{meta.roleLabel}</span>
-            {deception && peeked && (
-              <span className="text-[9px] text-[var(--loss)] border border-[var(--loss)] px-1 py-0.5 rounded uppercase tracking-wider">
-                🎭 deception
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="text-right whitespace-nowrap text-xs">
-          <span className={`font-semibold ${leanColor(pub.statedLean)}`}>{pub.statedLean.toUpperCase()}</span>
-          <span className="text-[var(--faint)] ml-1">{Math.round(pub.statedConviction * 100)}%</span>
-        </div>
+    <div className="py-3 border-t border-[var(--grid)] first:border-t-0">
+      <div className="flex items-baseline gap-2 flex-wrap mb-1">
+        <span className="font-semibold text-[0.95rem]">{meta.name}</span>
+        <span className="text-[11px] text-[var(--faint)] font-medium">{meta.roleLabel}</span>
+        {deception && peeked && <span className="text-xs" title="public diverges from private">🎭</span>}
+        <span className="text-[11px] ml-auto" style={{ color: leanColor(pub.statedLean) }}>
+          <strong>{pub.statedLean.toLowerCase()}</strong>
+          <span className="text-[var(--faint)] ml-1">· {Math.round(pub.statedConviction * 100)}%</span>
+        </span>
+        <span className="text-[11px]" style={{ color: actColor }}>
+          → {actLabel[act.actionType] || act.actionType}
+        </span>
       </div>
-      <div className="text-[13px] text-[var(--muted)] italic leading-snug">&quot;{pub.narrative}&quot;</div>
-      <div className={`text-[11px] mt-1 ${actColor}`}>
-        → {act.actionType.replace("_", " ")}
+      <div className="text-[0.85rem] text-[var(--muted)] italic leading-snug">
+        &ldquo;{(pub.narrative || "").slice(0, 240)}&rdquo;
       </div>
+
       {peeked ? (
-        <div className="mt-2 p-2 bg-[var(--hint)] border-l-2 border-[var(--hint-border)] rounded text-[13px]">
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--muted)]">👁 Private</span>
-            <span className={`text-xs font-semibold ${leanColor(priv.lean)}`}>{priv.lean.toUpperCase()}</span>
-            <span className="text-xs text-[var(--faint)]">{Math.round(priv.conviction * 100)}% conv</span>
+        <div className="mt-2 px-3 py-2 bg-[var(--hint)] border-l-[3px] border-[var(--hint-border)] rounded-r-md">
+          <div className="text-[10px] uppercase tracking-wider font-semibold text-[#92400e] mb-1">
+            👁 Private thoughts revealed
           </div>
-          <div className="text-[var(--ink)] leading-snug">{priv.actualThesis}</div>
+          <div className="text-[0.85rem] text-[var(--ink)] leading-snug">
+            <strong style={{ color: leanColor(priv.lean) }}>{priv.lean}</strong>{" "}
+            <span className="text-[var(--muted)]">(conviction {Math.round(priv.conviction * 100)}%)</span>{" "}
+            — <em>{priv.actualThesis}</em>
+          </div>
         </div>
       ) : (
         <button
           onClick={onProbe}
           disabled={peeksLeft <= 0}
-          className="mt-2 text-[11px] text-blue-600 hover:underline disabled:text-[var(--faint)] disabled:cursor-not-allowed disabled:no-underline"
+          className="mt-1 text-[11px] text-blue-600 hover:underline disabled:text-[var(--faint)] disabled:cursor-not-allowed disabled:no-underline"
         >
-          👁 Peek private ({peeksLeft} / 3 today)
+          👁 Peek private thoughts ({peeksLeft}/3 today)
         </button>
       )}
     </div>
   );
 }
 
-// ── Simple SVG chart (only revealed days) ───────────────────────────────────
-function SimpleChart({ history, todayOpen }: { history: PriceBar[]; todayOpen?: number }) {
+// ────────────────────────────────────────────────────────────────
+// Price chart — same as Streamlit (lookback, today's open marker)
+// ────────────────────────────────────────────────────────────────
+
+function PriceChart({
+  history,
+  todayOpen,
+}: {
+  history: PriceBar[];
+  todayOpen?: number;
+}) {
   const W = 720;
-  const H = 280;
-  const pad = { top: 20, right: 12, bottom: 28, left: 48 };
+  const H = 320;
+  const pad = { top: 16, right: 14, bottom: 28, left: 52 };
   const innerW = W - pad.left - pad.right;
   const innerH = H - pad.top - pad.bottom;
 
-  const series = todayOpen ? [...history, { date: "today", open: todayOpen, high: todayOpen, low: todayOpen, close: todayOpen, volume: 0 }] : history;
-  if (series.length < 2) {
+  if (history.length < 2 && !todayOpen) {
     return (
-      <div className="bg-[var(--bg-soft)] border border-[var(--grid)] rounded-md p-12 text-center text-xs text-[var(--faint)]">
+      <div className="bg-white border border-[var(--grid)] rounded-md p-12 text-center text-xs text-[var(--faint)] font-mono">
         loading market data…
       </div>
     );
   }
+  const series = todayOpen
+    ? [...history, { date: "today", open: todayOpen, high: todayOpen, low: todayOpen, close: todayOpen, volume: 0 } as PriceBar]
+    : history;
   const ys = series.map((b) => b.close);
   let yMin = Math.min(...ys);
   let yMax = Math.max(...ys);
-  const pad2 = (yMax - yMin) * 0.08 || 1;
-  yMin -= pad2;
-  yMax += pad2;
-  const x = (i: number) => pad.left + (i / (series.length - 1)) * innerW;
+  const padY = (yMax - yMin) * 0.08 || 1;
+  yMin -= padY;
+  yMax += padY;
+  const x = (i: number) => pad.left + (i / Math.max(series.length - 1, 1)) * innerW;
   const y = (v: number) => pad.top + (1 - (v - yMin) / (yMax - yMin)) * innerH;
   const path = series.map((b, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(b.close).toFixed(1)}`).join(" ");
-  const ticks = Array.from({ length: 4 }, (_, i) => yMin + (i / 3) * (yMax - yMin));
+  const yTicks = Array.from({ length: 5 }, (_, i) => yMin + (i / 4) * (yMax - yMin));
   const todayIdx = todayOpen ? series.length - 1 : -1;
 
   return (
     <div className="bg-white border border-[var(--grid)] rounded-md p-2">
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="w-full">
-        {ticks.map((t, i) => (
+        {yTicks.map((t, i) => (
           <g key={i}>
             <line x1={pad.left} y1={y(t)} x2={pad.left + innerW} y2={y(t)} stroke="var(--grid)" strokeWidth={0.5} />
-            <text x={pad.left - 6} y={y(t) + 3} fontSize={10} textAnchor="end" fill="var(--muted)" className="num">${t.toFixed(0)}</text>
+            <text x={pad.left - 6} y={y(t) + 3} fontSize={10} textAnchor="end" fill="var(--muted)" fontFamily="-apple-system, sans-serif">
+              ${t.toFixed(0)}
+            </text>
           </g>
         ))}
-        <path d={path} stroke="var(--ink)" strokeWidth={1.8} fill="none" />
+        <path d={path} stroke="#0a0a0a" strokeWidth={2} fill="none" />
         {todayIdx >= 0 && (
           <>
-            <circle cx={x(todayIdx)} cy={y(series[todayIdx].close)} r={5} fill="#3b82f6">
-              <animate attributeName="r" values="5;8;5" dur="2s" repeatCount="indefinite" />
+            <circle cx={x(todayIdx)} cy={y(series[todayIdx].close)} r={6} fill="#3b82f6">
+              <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
             </circle>
-            <text x={x(todayIdx) - 10} y={y(series[todayIdx].close) - 10} fontSize={9} fill="#3b82f6" textAnchor="end" className="num">
-              today
-            </text>
+            <circle cx={x(todayIdx)} cy={y(series[todayIdx].close)} r={3.5} fill="#3b82f6" />
           </>
+        )}
+        {/* x-axis: first / mid / last */}
+        {[0, Math.floor(series.length / 2), series.length - 1].map((i) =>
+          i >= 0 && i < series.length ? (
+            <text
+              key={i}
+              x={x(i)}
+              y={pad.top + innerH + 18}
+              fontSize={10}
+              textAnchor="middle"
+              fill="var(--muted)"
+              fontFamily="-apple-system, sans-serif"
+            >
+              {series[i].date}
+            </text>
+          ) : null
         )}
       </svg>
     </div>
   );
 }
 
-// ── Main page ───────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
+// Main play page
+// ────────────────────────────────────────────────────────────────
+
 export default function PlayPage() {
   const router = useRouter();
   const session = useGameStore((s) => s.session);
@@ -178,29 +248,36 @@ export default function PlayPage() {
   const setPending = useGameStore((s) => s.setPending);
 
   const [allPrices, setAllPrices] = useState<PriceBar[] | null>(null);
-  const [statusMsg, setStatusMsg] = useState<string>("");
+  const [pricesError, setPricesError] = useState<string | null>(null);
+  const [agentStatus, setAgentStatus] = useState<string>("");
 
   useEffect(() => {
     if (!session) router.replace("/");
   }, [session, router]);
 
+  // ── Fetch prices directly from static asset (fast, CDN-cached) ──────────
   useEffect(() => {
     if (allPrices || !session) return;
-    setStatusMsg("loading market data…");
-    fetch(`/api/market/price?ticker=${session.ticker}`)
-      .then((r) => r.json())
+    fetch(`/data/${session.ticker}.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      })
       .then((d: { prices: PriceBar[] }) => {
         setAllPrices(d.prices);
-        setStatusMsg("");
       })
-      .catch((e) => setStatusMsg(`load failed: ${e}`));
+      .catch((e) => setPricesError(`market data load failed: ${e}`));
   }, [allPrices, session]);
 
+  // ── Per-day agent decide fetch ──────────────────────────────────────────
   useEffect(() => {
     if (!session || !allPrices || today || session.isComplete) return;
     const tradingPrices = allPrices.filter((p) => p.date >= session.startDate);
     const todayBar = tradingPrices[session.currentDayIdx];
-    if (!todayBar) return;
+    if (!todayBar) {
+      setAgentStatus("end of data");
+      return;
+    }
     const histEndIdx = allPrices.findIndex((p) => p.date === todayBar.date);
     const history = allPrices.slice(Math.max(0, histEndIdx - 30), histEndIdx + 1);
     const closes = history.map((b) => b.close);
@@ -217,7 +294,7 @@ export default function PlayPage() {
       bbLower: inds.bbLower ?? undefined,
       mom5d: inds.mom5d ?? undefined,
     };
-    setStatusMsg(`agents thinking for ${todayBar.date}…`);
+    setAgentStatus(`11 agents thinking… (${todayBar.date})`);
     fetch("/api/agents/decide", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -233,11 +310,12 @@ export default function PlayPage() {
         });
         const agg = (await aggResp.json()) as AggregateResponse;
         loadDay(todayBar.date, d.decisions, market, agg);
-        setStatusMsg("");
+        setAgentStatus("");
       })
-      .catch((e) => setStatusMsg(`agents unreachable: ${e}`));
+      .catch((e) => setAgentStatus(`agents unreachable: ${e}`));
   }, [session, allPrices, today, loadDay]);
 
+  // ── Derived state ───────────────────────────────────────────────────────
   const dayIdx = session?.currentDayIdx ?? 0;
   const total = session?.totalDays ?? 32;
   const isDone = session?.isComplete ?? false;
@@ -258,6 +336,7 @@ export default function PlayPage() {
   const bhPnl = u && u.initialCapital > 0 ? ((bhVal - u.initialCapital) / u.initialCapital) * 100 : 0;
   const alpha = pnlPct - bhPnl;
   const unreal = u && u.shares > 0 && u.costBasis > 0 ? (fill / u.costBasis - 1) * 100 : 0;
+  const maxBuyShares = u && fill > 0 ? Math.floor(u.cash / fill) : 0;
 
   const visibleHistory = useMemo(() => tradingPrices.slice(0, Math.max(0, dayIdx)), [tradingPrices, dayIdx]);
 
@@ -271,8 +350,9 @@ export default function PlayPage() {
   const peeksToday = today && session ? session.peeksByDate[today.date] ?? [] : [];
   const peeksLeft = 3 - peeksToday.length;
 
-  // Trade amount state
-  const maxAvail = pendingAction === "buy_lite" ? (u?.cash ?? 0) : pendingAction === "sell_lite" ? (u?.shares ?? 0) * fill : 0;
+  // ── Trade preview ────────────────────────────────────────────────────────
+  const maxAvail =
+    pendingAction === "buy_lite" ? (u?.cash ?? 0) : pendingAction === "sell_lite" ? (u?.shares ?? 0) * fill : 0;
   const pct = maxAvail > 0 ? Math.round((pendingAmount / maxAvail) * 100) : 0;
 
   useEffect(() => {
@@ -292,30 +372,32 @@ export default function PlayPage() {
     return <div className="p-12 text-center text-[var(--muted)]">loading…</div>;
   }
 
-  // First-day hint
   const firstDay = dayIdx === 0 && session.trades.length === 0;
 
-  // Trade preview computation
+  // Trade preview text
   let preview: React.ReactNode = null;
   if (pendingAction === "buy_lite") {
     if (u.cash <= 0 || pendingAmount <= 0) {
-      preview = <span className="text-[var(--muted)]">Enter amount above to preview.</span>;
+      preview = <span className="text-[var(--muted)]">Enter an amount above to preview the trade.</span>;
     } else {
       const willBuy = Math.floor(pendingAmount / fill);
       const cost = willBuy * fill;
       preview = (
         <>
-          Buy <span className="text-[var(--gain)] font-semibold">{willBuy.toLocaleString()} shares</span> at ${fill.toFixed(2)} ·{" "}
-          <span className="font-semibold">{fmtMoney(cost, true)}</span> deployed
-          <div className="text-xs text-[var(--muted)] mt-1">Cash after: {fmtMoney(u.cash - cost)} · Shares after: {(u.shares + willBuy).toLocaleString()}</div>
+          Buy{" "}
+          <strong style={{ color: "var(--gain)" }}>{willBuy.toLocaleString()} shares</strong> at ${fill.toFixed(2)} ·{" "}
+          <strong>{fmtMoney(cost, true)}</strong> deployed
+          <div className="text-xs text-[var(--muted)] mt-1">
+            Cash after: {fmtMoney(u.cash - cost)} · Shares after: {(u.shares + willBuy).toLocaleString()}
+          </div>
         </>
       );
     }
   } else if (pendingAction === "sell_lite") {
     if (u.shares <= 0) {
-      preview = <span className="text-[var(--loss)]">No long position to sell.</span>;
+      preview = <span style={{ color: "var(--loss)" }}>You have no long position to sell.</span>;
     } else if (pendingAmount <= 0) {
-      preview = <span className="text-[var(--muted)]">Enter amount above to preview.</span>;
+      preview = <span className="text-[var(--muted)]">Enter an amount above to preview the trade.</span>;
     } else {
       let willSell = Math.floor(pendingAmount / fill);
       if (pendingAmount >= u.shares * fill - fill) willSell = u.shares;
@@ -323,9 +405,12 @@ export default function PlayPage() {
       const proceeds = willSell * fill;
       preview = (
         <>
-          Sell <span className="text-[var(--loss)] font-semibold">{willSell.toLocaleString()} shares</span> at ${fill.toFixed(2)} · receive{" "}
-          <span className="font-semibold">{fmtMoney(proceeds, true)}</span>
-          <div className="text-xs text-[var(--muted)] mt-1">Cash after: {fmtMoney(u.cash + proceeds)} · Shares after: {(u.shares - willSell).toLocaleString()}</div>
+          Sell{" "}
+          <strong style={{ color: "var(--loss)" }}>{willSell.toLocaleString()} shares</strong> at ${fill.toFixed(2)} · receive{" "}
+          <strong>{fmtMoney(proceeds, true)}</strong>
+          <div className="text-xs text-[var(--muted)] mt-1">
+            Cash after: {fmtMoney(u.cash + proceeds)} · Shares after: {(u.shares - willSell).toLocaleString()}
+          </div>
         </>
       );
     }
@@ -335,38 +420,52 @@ export default function PlayPage() {
 
   return (
     <div className="max-w-[1180px] mx-auto px-4 py-4 pb-16">
-      {/* ── Top header (sticky) ──────────────────────────────── */}
-      <header className="flex items-baseline justify-between mb-2 pb-3 border-b border-[var(--border)]">
+      {/* ── Top header — Streamlit 7-column metric strip ─────────────────── */}
+      <header className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-baseline pb-3 mb-2">
         <div>
-          <h1 className="text-xl font-bold leading-tight">{session.ticker}</h1>
-          <div className="text-xs text-[var(--muted)] mt-0.5">
-            {isDone ? `Final · ${todayBar?.date}` : `Day ${dayIdx + 1} of ${total} · ${todayBar?.date ?? "…"}`}
+          <h1 className="text-2xl font-bold leading-tight tracking-tight">{session.ticker}</h1>
+          <div className="text-[0.85rem] text-[var(--muted)] font-medium mt-0.5">
+            {isDone ? `Final · ${todayBar?.date}` : `Day ${dayIdx + 1} of ${total} · ${todayBar?.date ?? "—"}`}
           </div>
         </div>
-        <div className="flex gap-5 items-baseline">
-          <Metric label="Open" value={`$${fill.toFixed(2)}`} delta={`${todayPct >= 0 ? "+" : ""}${todayPct.toFixed(2)}%`} deltaColor={todayPct >= 0 ? "var(--gain)" : "var(--loss)"} />
-          <Metric label="Avg cost" value={u.shares > 0 && u.costBasis > 0 ? `$${u.costBasis.toFixed(2)}` : "—"} delta={u.shares > 0 ? `${unreal >= 0 ? "+" : ""}${unreal.toFixed(2)}%` : "no pos"} deltaColor={u.shares > 0 ? (unreal >= 0 ? "var(--gain)" : "var(--loss)") : "var(--muted)"} />
-          <Metric label="Portfolio" value={fmtMoney(totalVal)} delta={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} deltaColor={pnlPct >= 0 ? "var(--gain)" : "var(--loss)"} />
-          <Metric label="Cash" value={fmtMoney(u.cash)} />
-          <Metric label="Position" value={u.shares > 0 ? "LONG" : "—"} delta={u.shares > 0 ? `${u.shares.toLocaleString()} sh` : undefined} />
-          <Metric label="Alpha" value={`${alpha >= 0 ? "+" : ""}${alpha.toFixed(2)}%`} delta="vs B&H" deltaColor={alpha >= 0 ? "var(--gain)" : "var(--loss)"} />
-        </div>
+        <Metric
+          label="Open"
+          value={fill > 0 ? `$${fill.toFixed(2)}` : "—"}
+          delta={prevBar ? `${todayPct >= 0 ? "+" : ""}${todayPct.toFixed(2)}%` : undefined}
+          deltaColor={todayPct >= 0 ? "var(--gain)" : "var(--loss)"}
+        />
+        <Metric
+          label="Avg cost"
+          value={u.shares > 0 && u.costBasis > 0 ? `$${u.costBasis.toFixed(2)}` : "—"}
+          delta={u.shares > 0 ? `${unreal >= 0 ? "+" : ""}${unreal.toFixed(2)}% unrealized` : "no position"}
+          deltaColor={u.shares > 0 ? (unreal >= 0 ? "var(--gain)" : "var(--loss)") : "var(--muted)"}
+        />
+        <Metric label="Portfolio" value={fmtMoney(totalVal)} delta={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`} deltaColor={pnlPct >= 0 ? "var(--gain)" : "var(--loss)"} />
+        <Metric label="Cash" value={fmtMoney(u.cash)} />
+        <Metric label="Position" value={u.shares > 0 ? "LONG" : "—"} delta={u.shares > 0 ? `${u.shares.toLocaleString()} sh` : undefined} />
+        <Metric label="Alpha" value={`${alpha >= 0 ? "+" : ""}${alpha.toFixed(2)}%`} delta="vs B&H" deltaColor={alpha >= 0 ? "var(--gain)" : "var(--loss)"} />
       </header>
 
-      {/* ── First-day hint ──────────────────────────────────── */}
+      <div className="border-t border-[var(--grid)] mb-3" />
+
+      {/* ── First-day hint ──────────────────────────────────────────────── */}
       {firstDay && (
-        <div className="bg-[var(--hint)] border border-[var(--hint-border)] rounded-md px-3 py-2 text-sm mb-3">
-          👋 <strong>First day.</strong> Each day:&nbsp;
-          <strong>①</strong> read market + agent voices →&nbsp;
-          <strong>②</strong> optional peek private thoughts →&nbsp;
-          <strong>③</strong> scroll to <strong>Your Move</strong>, pick Buy/Hold/Sell, click <strong>Confirm</strong>.
+        <div className="bg-[var(--hint)] border border-[var(--hint-border)] rounded-lg px-4 py-3 text-[0.92rem] text-[#422006] leading-relaxed mb-4">
+          👋 <strong>First day.</strong> Each day follows this flow:{" "}
+          <strong>①</strong> review today&apos;s market (chart + agent voices) →{" "}
+          <strong>②</strong> optionally peek private thoughts →{" "}
+          <strong>③</strong> scroll down to <strong>Your Move</strong>, pick Buy/Hold/Sell, click <strong>Confirm</strong>.{" "}
+          <em>This hint disappears after your first trade.</em>
         </div>
       )}
 
+      {/* ── End-of-session ──────────────────────────────────────────────── */}
       {isDone && (
-        <div className="border-2 border-[var(--ink)] rounded-md p-5 mb-4 bg-[var(--bg-soft)]">
-          <div className="text-xs uppercase tracking-wider text-[var(--muted)] mb-2 font-semibold">🏁 Session complete · 32 / 32 days</div>
-          <h2 className="text-2xl font-bold mb-2">
+        <div className="border-2 border-[var(--ink)] rounded-lg p-5 mb-4 bg-[var(--bg-soft)]">
+          <div className="text-xs uppercase tracking-wider text-[var(--muted)] mb-2 font-bold">
+            🏁 Session complete · 32 / 32 days
+          </div>
+          <h2 className="text-2xl font-bold mb-2 tracking-tight">
             {alpha >= 0 ? "You beat Buy & Hold." : "The hive won this round."}
           </h2>
           <p className="text-sm text-[var(--muted)]">
@@ -380,26 +479,32 @@ export default function PlayPage() {
 
       {!isDone && (
         <>
-          {/* Step 1 */}
-          <StepLabel n={1}>Review today&apos;s market</StepLabel>
+          {/* ── §1 Review market ──────────────────────────────────────────── */}
+          <SectionLabel n={1}>Review today&apos;s market</SectionLabel>
 
           <div className="grid grid-cols-1 md:grid-cols-[1.55fr_1fr] gap-6">
             <div>
-              <SimpleChart history={visibleHistory} todayOpen={fill} />
-              {statusMsg && <div className="text-xs text-[var(--muted)] mt-1 font-mono">{statusMsg}</div>}
+              <PriceChart history={visibleHistory} todayOpen={fill > 0 ? fill : undefined} />
+              {pricesError && (
+                <div className="text-xs text-[var(--loss)] mt-2">⚠ {pricesError}</div>
+              )}
+              {agentStatus && (
+                <div className="text-xs text-[var(--muted)] mt-2 font-mono">{agentStatus}</div>
+              )}
             </div>
 
             <div>
-              <div className="flex items-baseline justify-between mb-2">
-                <span className="text-xs uppercase tracking-wider text-[var(--muted)] font-semibold">Voices today · all 11</span>
-                <span className="text-xs text-[var(--muted)]">{peeksLeft} / 3 peeks left</span>
+              <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2">
+                Voices today · all 11 agents
               </div>
               {rankedDecisions.length === 0 ? (
-                <div className="text-sm text-[var(--muted)] py-8 text-center">agents forming their views…</div>
+                <div className="text-sm text-[var(--muted)] py-8 text-center italic">
+                  agents forming their views…
+                </div>
               ) : (
-                <div className="max-h-[520px] overflow-y-auto pr-2">
+                <div className="max-h-[520px] overflow-y-auto pr-2 -mr-2">
                   {rankedDecisions.map((d) => (
-                    <VoiceCardCompact
+                    <VoiceCard
                       key={d.agentId}
                       decision={d}
                       peeked={peeksToday.includes(d.agentId)}
@@ -412,71 +517,65 @@ export default function PlayPage() {
             </div>
           </div>
 
-          {/* Step 3 — Make move */}
-          <StepLabel n={3}>Make your move · Buy / Hold / Sell, then Confirm</StepLabel>
+          {/* ── §3 Make your move ─────────────────────────────────────────── */}
+          <SectionLabel n={3}>Make your move — Buy, Hold, or Sell, then Confirm</SectionLabel>
 
-          <div className="bg-[var(--bg-soft)] border border-[var(--border)] rounded-lg p-4">
-            <div className="flex items-baseline justify-between mb-3 text-xs">
-              <span className="text-[var(--muted)]">
-                Cash <strong className="text-[var(--ink)]">{fmtMoney(u.cash)}</strong> · Shares <strong className="text-[var(--ink)]">{u.shares.toLocaleString()}</strong>
+          <div className="bg-gradient-to-b from-[var(--bg-soft)] to-white border border-[var(--border)] rounded-xl p-4">
+            <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+              <span className="text-[0.85rem] uppercase tracking-[0.08em] font-bold text-[var(--ink)]">
+                YOUR MOVE · DAY {dayIdx + 1}
               </span>
-              <span className="text-[var(--muted)]">
-                Trading at open: <strong className="text-[var(--ink)]">${fill.toFixed(2)}</strong>
+              <span className="text-xs text-[var(--muted)]">
+                Trading at open: <strong className="text-[var(--ink)] num">${fill.toFixed(2)}</strong>
               </span>
             </div>
+            <div className="flex gap-6 text-xs text-[var(--muted)] mb-4 flex-wrap">
+              <span>Cash: <strong className="text-[var(--ink)] num">{fmtMoney(u.cash)}</strong></span>
+              <span>Shares: <strong className="text-[var(--ink)] num">{u.shares >= 0 ? "+" : ""}{u.shares.toLocaleString()}</strong></span>
+              <span>Max buy: <strong className="text-[var(--ink)] num">{maxBuyShares.toLocaleString()} sh</strong> ({fmtMoney(maxBuyShares * fill)})</span>
+            </div>
 
+            {/* 3 big action buttons */}
             <div className="grid grid-cols-3 gap-2 mb-3">
-              <button
-                onClick={() => setPending("buy_lite", pendingAmount)}
-                className={`py-3 rounded-md font-semibold text-sm border-2 transition-colors ${
-                  pendingAction === "buy_lite"
-                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
-                    : "bg-white text-[var(--ink)] border-[var(--border)] hover:border-[var(--ink)]"
-                }`}
-              >
-                🟢 BUY
-              </button>
-              <button
-                onClick={() => setPending("hold", 0)}
-                className={`py-3 rounded-md font-semibold text-sm border-2 transition-colors ${
-                  pendingAction === "hold"
-                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
-                    : "bg-white text-[var(--ink)] border-[var(--border)] hover:border-[var(--ink)]"
-                }`}
-              >
-                ⏸ HOLD
-              </button>
-              <button
-                onClick={() => setPending("sell_lite", pendingAmount)}
-                className={`py-3 rounded-md font-semibold text-sm border-2 transition-colors ${
-                  pendingAction === "sell_lite"
-                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
-                    : "bg-white text-[var(--ink)] border-[var(--border)] hover:border-[var(--ink)]"
-                }`}
-              >
-                🔴 SELL
-              </button>
+              {(["buy_lite", "hold", "sell_lite"] as ActionType[]).map((a) => {
+                const isOn = pendingAction === a;
+                const label = a === "buy_lite" ? "🟢  BUY" : a === "hold" ? "⏸  HOLD" : "🔴  SELL";
+                return (
+                  <button
+                    key={a}
+                    onClick={() => setPending(a, pendingAmount)}
+                    className={`py-3 rounded-md font-semibold text-sm border-[1.5px] transition-all ${
+                      isOn
+                        ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                        : "bg-white text-[var(--ink)] border-[var(--border)] hover:border-[var(--ink)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
 
+            {/* Amount input + slider */}
             {pendingAction !== "hold" && maxAvail > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-4 mb-3">
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-[var(--muted)] mb-1 font-medium">
-                    Amount · USD (max ${maxAvail.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                    Amount in USD · max ${maxAvail.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </label>
                   <input
                     type="number"
                     min={0}
                     max={maxAvail}
-                    step={100}
+                    step={Math.max(100, Math.round(maxAvail / 100 / 100) * 100)}
                     value={pendingAmount}
                     onChange={(e) => setPending(pendingAction, Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-[var(--border)] rounded-md font-mono text-sm focus:border-[var(--ink)] outline-none"
+                    className="w-full px-3 py-2 border border-[var(--border)] rounded-md font-mono text-sm focus:border-[var(--ink)] outline-none num"
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-wider text-[var(--muted)] mb-1 font-medium">
-                    {pct}% of {pendingAction === "buy_lite" ? "cash" : "position"}
+                    Percent of {pendingAction === "buy_lite" ? "cash" : "position"} to {pendingAction === "buy_lite" ? "deploy" : "sell"} — {pct}%
                   </label>
                   <input
                     type="range"
@@ -484,15 +583,20 @@ export default function PlayPage() {
                     max={100}
                     step={1}
                     value={pct}
-                    onChange={(e) => setPending(pendingAction, Math.round((Number(e.target.value) / 100) * maxAvail))}
+                    onChange={(e) =>
+                      setPending(pendingAction, Math.round((Number(e.target.value) / 100) * maxAvail))
+                    }
                     className="w-full"
                   />
                 </div>
               </div>
             )}
 
-            <div className="bg-white border-l-2 border-[var(--ink)] p-3 rounded text-sm mb-3">
-              <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-1 font-semibold">Trade preview</div>
+            {/* Preview */}
+            <div className="bg-white border-l-[3px] border-[var(--ink)] px-3 py-2 rounded text-sm mb-3">
+              <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-1 font-semibold">
+                Trade preview
+              </div>
               <div>{preview}</div>
             </div>
 
@@ -500,35 +604,37 @@ export default function PlayPage() {
               onClick={handleCommit}
               className="w-full bg-[var(--ink)] text-white py-3 rounded-md font-semibold text-sm hover:opacity-90 transition-opacity"
             >
-              Confirm & advance to next day →
+              Confirm &amp; advance to next day →
             </button>
           </div>
 
-          {/* Standings */}
-          <StepLabel n={4} muted>Standings · you vs the hive</StepLabel>
+          {/* ── Standings ─────────────────────────────────────────────────── */}
+          <SectionLabel n={4} muted>
+            Standings · you vs the hive
+          </SectionLabel>
 
           <div className="text-xs">
-            <div className="grid grid-cols-[40px_1fr_80px] gap-2 py-1 border-b border-[var(--border)] uppercase tracking-wider text-[var(--muted)] font-semibold">
+            <div className="grid grid-cols-[40px_1fr_80px] gap-2 py-1 border-b border-[var(--border)] uppercase tracking-wider text-[var(--muted)] font-bold">
               <span>#</span>
               <span>Trader</span>
-              <span className="text-right">P&L</span>
+              <span className="text-right">P&amp;L</span>
             </div>
-            {[
-              { name: "You", role: "the twelfth trader", pnl: pnlPct, you: true },
-              { name: "Buy & Hold", role: "passive index", pnl: bhPnl, you: false },
-              ...ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => ({
-                name: HIVE_AGENTS_BY_ID[a.id]?.name ?? a.name,
-                role: HIVE_AGENTS_BY_ID[a.id]?.roleLabel ?? a.role,
-                pnl: 0, // backend doesn't expose per-agent ledger live yet
-                you: false,
-              })),
-            ]
-              .sort((a, b) => b.pnl - a.pnl)
-              .map((r, i) => (
+            {(() => {
+              const rows = [
+                { name: "You", role: "the twelfth trader", pnl: pnlPct, you: true },
+                { name: "Buy & Hold", role: "passive index", pnl: bhPnl, you: false },
+                ...ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => ({
+                  name: HIVE_AGENTS_BY_ID[a.id]?.name ?? a.name,
+                  role: HIVE_AGENTS_BY_ID[a.id]?.roleLabel ?? a.role,
+                  pnl: 0,
+                  you: false,
+                })),
+              ].sort((a, b) => b.pnl - a.pnl);
+              return rows.map((r, i) => (
                 <div
                   key={r.name}
                   className={`grid grid-cols-[40px_1fr_80px] gap-2 py-2 border-b border-[var(--grid)] items-baseline ${
-                    r.you ? "bg-[var(--hint)]" : ""
+                    r.you ? "bg-[var(--hint)] rounded -mx-1 px-1" : ""
                   }`}
                 >
                   <span className="text-[var(--faint)] num">#{i + 1}</span>
@@ -536,12 +642,17 @@ export default function PlayPage() {
                     <span className="font-semibold">{r.name}</span>
                     <span className="text-[var(--faint)] text-[11px] ml-2">{r.role}</span>
                   </span>
-                  <span className={`text-right font-mono font-semibold ${r.pnl > 0 ? "text-[var(--gain)]" : r.pnl < 0 ? "text-[var(--loss)]" : "text-[var(--muted)]"}`}>
+                  <span
+                    className={`text-right font-mono font-semibold num ${
+                      r.pnl > 0 ? "text-[var(--gain)]" : r.pnl < 0 ? "text-[var(--loss)]" : "text-[var(--muted)]"
+                    }`}
+                  >
                     {r.pnl >= 0 ? "+" : ""}
                     {r.pnl.toFixed(2)}%
                   </span>
                 </div>
-              ))}
+              ));
+            })()}
           </div>
         </>
       )}
