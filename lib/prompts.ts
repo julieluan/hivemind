@@ -160,19 +160,47 @@ export function parseAgentDecision(
   agentId: string,
   date: string
 ): AgentDecision | null {
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(match[0]);
-  } catch {
-    // Try replacing single quotes
+  // Strip ```json … ``` / ``` … ``` fences Claude likes to add
+  let body = raw.trim();
+  const fence = body.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) body = fence[1].trim();
+
+  // Greedy match from first { to last } to capture the JSON blob
+  const match = body.match(/\{[\s\S]*\}/);
+  let candidate = match ? match[0] : body;
+
+  const tryParse = (s: string): Record<string, unknown> | null => {
     try {
-      parsed = JSON.parse(match[0].replace(/'/g, '"'));
+      return JSON.parse(s) as Record<string, unknown>;
     } catch {
-      return null;
+      try {
+        return JSON.parse(s.replace(/'/g, '"')) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
     }
+  };
+
+  let parsed = tryParse(candidate);
+
+  // Repair a truncated JSON (maxTokens cut-off): close open quotes / braces
+  if (!parsed) {
+    let repaired = candidate;
+    // Trim a trailing comma
+    repaired = repaired.replace(/,\s*$/, "");
+    // Trim a dangling key like:  "foo": "abc
+    repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/, "");
+    // Close an open string
+    const quoteCount = (repaired.match(/(?<!\\)"/g) || []).length;
+    if (quoteCount % 2 === 1) repaired += '"';
+    // Balance braces
+    const openBr = (repaired.match(/\{/g) || []).length;
+    const closeBr = (repaired.match(/\}/g) || []).length;
+    repaired += "}".repeat(Math.max(0, openBr - closeBr));
+    parsed = tryParse(repaired);
   }
+
+  if (!parsed) return null;
 
   const pb = (parsed.private_belief ?? {}) as Record<string, unknown>;
   const ps = (parsed.public_statement ?? {}) as Record<string, unknown>;

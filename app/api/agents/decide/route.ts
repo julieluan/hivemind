@@ -175,12 +175,12 @@ export async function POST(req: NextRequest) {
 
       const llmResp = await provider.call(systemPrompt, userMessage, {
         jsonMode: true,
-        maxTokens: 350,
+        // 500 tokens fits the full 4-layer JSON with room for narrative.
+        // 350 was cutting Claude off mid-response, leaving unparseable JSON.
+        maxTokens: 500,
         temperature: 0.7,
-        // Vercel Hobby Node.js maxDuration is 60s; leave headroom for the
-        // aggregation call + response serialization. Per-call 45s lets a slow
-        // uyilink → Claude Haiku call still finish instead of hitting the
-        // 8s abort we had before.
+        // Vercel Hobby Node.js maxDuration is 60s; per-call 45s lets a slow
+        // uyilink → Claude Haiku call still finish.
         timeoutMs: 45_000,
       });
 
