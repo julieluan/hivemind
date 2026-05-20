@@ -175,9 +175,13 @@ export async function POST(req: NextRequest) {
 
       const llmResp = await provider.call(systemPrompt, userMessage, {
         jsonMode: true,
-        maxTokens: 600,
+        maxTokens: 350,
         temperature: 0.7,
-        timeoutMs: 8_000,
+        // Vercel Hobby Node.js maxDuration is 60s; leave headroom for the
+        // aggregation call + response serialization. Per-call 45s lets a slow
+        // uyilink → Claude Haiku call still finish instead of hitting the
+        // 8s abort we had before.
+        timeoutMs: 45_000,
       });
 
       const parsed = parseAgentDecision(llmResp.text, aid, body.date);
