@@ -134,7 +134,7 @@ export function StreamlitChart({
   else row_heights = [0.55, 0.15, 0.15, 0.15];
 
   const totalH = baseHeight + subHeight * (n_rows - 1);
-  const pad = { top: 14, right: 14, bottom: 32, left: 50 };
+  const pad = { top: 14, right: 14, bottom: 32, left: 64 };
   const innerW = width - pad.left - pad.right;
   const innerH = totalH - pad.top - pad.bottom;
   const gap = 6;
@@ -443,34 +443,78 @@ export function StreamlitChart({
           />
         )}
 
-        {/* Today's open diamond */}
-        {todayOpen != null && (
-          <g>
-            <polygon
-              points={(() => {
-                const cx = xOfDate(todayDate);
-                const cy = yPrice(todayOpen);
-                const s = 7;
-                return `${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`;
-              })()}
-              fill="#3b82f6"
-              stroke="white"
-              strokeWidth={2}
-            >
-              <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
-            </polygon>
-            <text
-              x={xOfDate(todayDate) + 12}
-              y={yPrice(todayOpen) - 8}
-              fontSize={10}
-              fill="#3b82f6"
-              fontFamily="-apple-system, sans-serif"
-              fontWeight={600}
-            >
-              OPEN ${todayOpen.toFixed(2)}
-            </text>
-          </g>
-        )}
+        {/* Today's open diamond + label (auto-flips left of marker near right edge) */}
+        {todayOpen != null && (() => {
+          const cx = xOfDate(todayDate);
+          const cy = yPrice(todayOpen);
+          const s = 7;
+          const labelText = `OPEN $${todayOpen.toFixed(2)}`;
+          const approxLabelW = labelText.length * 6.2 + 6;
+          // If diamond is in the right 30% of plot, render label to its LEFT
+          const flipLeft = cx > pad.left + innerW * 0.7;
+          const labelX = flipLeft ? cx - s - 4 : cx + s + 4;
+          const labelAnchor = flipLeft ? "end" : "start";
+          // Also clamp label so it never overflows the inner plot area
+          const labelXClamped = Math.max(
+            pad.left + 2,
+            Math.min(pad.left + innerW - 2, labelX)
+          );
+          void approxLabelW;
+          return (
+            <g>
+              {/* Horizontal price guide line from y-axis to the diamond */}
+              <line
+                x1={pad.left}
+                y1={cy}
+                x2={cx}
+                y2={cy}
+                stroke="#3b82f6"
+                strokeDasharray="2 3"
+                strokeWidth={0.8}
+                opacity={0.5}
+              />
+              {/* Price label on the LEFT y-axis */}
+              <rect
+                x={pad.left - 46}
+                y={cy - 8}
+                width={44}
+                height={16}
+                rx={2}
+                fill="#3b82f6"
+              />
+              <text
+                x={pad.left - 24}
+                y={cy + 4}
+                fontSize={10}
+                textAnchor="middle"
+                fill="white"
+                fontFamily="-apple-system, sans-serif"
+                fontWeight={700}
+              >
+                ${todayOpen.toFixed(2)}
+              </text>
+              <polygon
+                points={`${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`}
+                fill="#3b82f6"
+                stroke="white"
+                strokeWidth={2}
+              >
+                <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
+              </polygon>
+              <text
+                x={labelXClamped}
+                y={cy - 10}
+                fontSize={10}
+                textAnchor={labelAnchor}
+                fill="#3b82f6"
+                fontFamily="-apple-system, sans-serif"
+                fontWeight={700}
+              >
+                {labelText}
+              </text>
+            </g>
+          );
+        })()}
 
         {/* User trades */}
         {tradeMarks.map((m, i) => (
