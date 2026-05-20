@@ -16,6 +16,11 @@ export const SIZING_ADDENDUM = `
   - stop_loss_pct: negative e.g. -0.06 (force-close if drops 6%)
   - take_profit_pct: positive e.g. +0.20
   - Omit (or null) if not using stops
+
+⚠️ OUTPUT FORMAT — CRITICAL:
+Return ONLY the raw JSON object. No markdown fences, no \`\`\`json wrapper,
+no explanation before or after. Just the { ... } object.
+Keep narrative + actual_thesis to 1-2 short sentences each (under 30 words).
 `;
 
 // ─── The 11 agents ───────────────────────────────────────────────────────────
