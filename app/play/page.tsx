@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useGameStore } from "@/lib/store";
 import { ALL_AGENTS } from "@/lib/agents";
@@ -14,6 +14,7 @@ import type {
 import { computeIndicators } from "@/lib/price-engine";
 import { HIVE_AGENTS_BY_ID, fmtMoney, isDeception } from "@/lib/agent-meta";
 import { StreamlitChart, type RangeKey, type Overlay } from "@/components/StreamlitChart";
+import { Tutorial, type TutorialStep } from "@/components/Tutorial";
 
 // ────────────────────────────────────────────────────────────────
 // What-if scenarios — same shape as Streamlit's SCENARIOS dict
@@ -302,6 +303,20 @@ function RangePills({
   );
 }
 
+// Plain-English explanations for technical indicators (shown on hover)
+const INDICATOR_TIPS: Record<Overlay, string> = {
+  SMA20:
+    "Simple Moving Average over the last 20 days. A trend baseline — if price is above the SMA20 line, momentum is up; if below, down. Crossing it both ways is often used as a buy/sell signal.",
+  BB:
+    "Bollinger Bands. Two dotted lines drawn 2 standard deviations above and below the SMA20. Wide bands = high volatility, tight bands = low. Price tagging the upper band is often 'stretched up'; tagging the lower is 'oversold.'",
+  RSI:
+    "Relative Strength Index (14-day). 0–100 scale. Above 70 = overbought (stretched up, often pulls back). Below 30 = oversold (stretched down, often bounces). Shown as a purple line in its own panel below the chart.",
+  MACD:
+    "Moving Average Convergence Divergence. The histogram (green/red bars) shows the momentum of the trend. Crossing above zero = bullish cross. Crossing below = bearish cross. The orange dotted line is the 9-day signal smoothing.",
+  Volume:
+    "Number of shares traded each day. Big green bar on a down day = capitulation. Big red bar on an up day = distribution. Volume confirming a price move makes the move more reliable.",
+};
+
 function OverlayChips({
   value,
   onChange,
@@ -320,6 +335,7 @@ function OverlayChips({
           <button
             key={o}
             onClick={() => toggle(o)}
+            title={INDICATOR_TIPS[o]}
             className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors ${
               on
                 ? "bg-[var(--ink)] text-white border-[var(--ink)]"
@@ -343,14 +359,21 @@ function Pill({
   value,
   sub,
   color,
+  tip,
 }: {
   label: string;
   value: string;
   sub?: string;
   color?: string;
+  tip?: string;
 }) {
   return (
-    <span className="inline-flex items-baseline gap-1.5 px-2.5 py-1 mr-1.5 mb-1.5 bg-[var(--bg-soft)] border border-[var(--grid)] rounded-md text-[0.82rem]">
+    <span
+      title={tip}
+      className={`inline-flex items-baseline gap-1.5 px-2.5 py-1 mr-1.5 mb-1.5 bg-[var(--bg-soft)] border border-[var(--grid)] rounded-md text-[0.82rem] ${
+        tip ? "cursor-help" : ""
+      }`}
+    >
       <span className="text-[var(--muted)] font-medium">{label}</span>
       <span className="font-semibold num" style={{ color: color || "var(--ink)" }}>
         {value}
@@ -392,10 +415,44 @@ export default function PlayPage() {
     Array<{ agentId: string; agentName: string; agentRole: string; action: string; reasoning: string; conviction: number }>
   >([]);
   const [llmReactLoading, setLlmReactLoading] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // Tutorial spotlight targets
+  const chartRef = useRef<HTMLDivElement>(null);
+  const voicesRef = useRef<HTMLDivElement>(null);
+  const powerupsRef = useRef<HTMLDivElement>(null);
+  const yourMoveRef = useRef<HTMLDivElement>(null);
+  const standingsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!session) router.replace("/");
   }, [session, router]);
+
+  // Auto-open the spotlight tutorial on first day of a brand-new session,
+  // unless the user dismissed it previously (localStorage flag).
+  useEffect(() => {
+    if (!session) return;
+    if (session.currentDayIdx !== 0 || session.trades.length > 0) return;
+    try {
+      const seen = window.localStorage.getItem("hivemind:tutorialSeen");
+      if (!seen) {
+        // Defer slightly so layout has refs measured
+        const t = setTimeout(() => setShowTutorial(true), 400);
+        return () => clearTimeout(t);
+      }
+    } catch {
+      // SSR / private mode — ignore
+    }
+  }, [session]);
+
+  const dismissTutorial = () => {
+    setShowTutorial(false);
+    try {
+      window.localStorage.setItem("hivemind:tutorialSeen", "1");
+    } catch {
+      // ignore
+    }
+  };
 
   // ── Fetch prices directly from static asset (fast, CDN-cached) ──────────
   useEffect(() => {
@@ -628,16 +685,15 @@ export default function PlayPage() {
 
       <div className="border-t border-[var(--grid)] mb-3" />
 
-      {/* ── First-day hint ──────────────────────────────────────────────── */}
-      {firstDay && (
-        <div className="bg-[var(--hint)] border border-[var(--hint-border)] rounded-lg px-4 py-3 text-[0.92rem] text-[#422006] leading-relaxed mb-4">
-          👋 <strong>First day.</strong> Each day follows this flow:{" "}
-          <strong>①</strong> review today&apos;s market (chart + agent voices) →{" "}
-          <strong>②</strong> optionally peek private thoughts →{" "}
-          <strong>③</strong> scroll down to <strong>Your Move</strong>, pick Buy/Hold/Sell, click <strong>Confirm</strong>.{" "}
-          <em>This hint disappears after your first trade.</em>
-        </div>
-      )}
+      {/* ── Spotlight tutorial trigger (always available, top-right) ─────── */}
+      <div className="flex justify-end mb-1">
+        <button
+          onClick={() => setShowTutorial(true)}
+          className="text-[11px] text-[var(--muted)] hover:text-[var(--ink)] underline decoration-dotted underline-offset-4"
+        >
+          ? Take the tour
+        </button>
+      </div>
 
       {/* ── End-of-session — full recap ────────────────────────────────── */}
       {isDone && (() => {
@@ -1061,7 +1117,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
           <SectionLabel n={1}>Review today&apos;s market</SectionLabel>
 
           <div className="grid grid-cols-1 md:grid-cols-[1.55fr_1fr] gap-6">
-            <div>
+            <div ref={chartRef}>
               {/* Range + overlay controls (inline above chart) */}
               <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <RangePills value={range} onChange={setRange} />
@@ -1092,6 +1148,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                     <Pill
                       label="RSI(14)"
                       value={indicatorRow.rsi14.toFixed(0)}
+                      tip={INDICATOR_TIPS.RSI}
                       color={
                         indicatorRow.rsi14 > 70
                           ? "var(--loss)"
@@ -1107,26 +1164,33 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                       value={`${indicatorRow.macdHist >= 0 ? "+" : ""}${indicatorRow.macdHist.toFixed(2)}`}
                       sub={indicatorRow.macdDir === "bull" ? "▲" : indicatorRow.macdDir === "bear" ? "▼" : "—"}
                       color={indicatorRow.macdHist > 0 ? "var(--gain)" : "var(--loss)"}
+                      tip={INDICATOR_TIPS.MACD}
                     />
                   )}
                   {indicatorRow.sma20 != null && (
-                    <Pill label="SMA20" value={`$${indicatorRow.sma20.toFixed(2)}`} />
+                    <Pill label="SMA20" value={`$${indicatorRow.sma20.toFixed(2)}`} tip={INDICATOR_TIPS.SMA20} />
                   )}
                   {indicatorRow.mom5d != null && (
                     <Pill
                       label="5d mom"
                       value={`${indicatorRow.mom5d >= 0 ? "+" : ""}${indicatorRow.mom5d.toFixed(2)}%`}
                       color={indicatorRow.mom5d > 0 ? "var(--gain)" : "var(--loss)"}
+                      tip="5-day momentum: how much the stock has moved over the last 5 trading days. Positive = up trend, negative = down."
                     />
                   )}
                   {indicatorRow.vol_ann != null && (
-                    <Pill label="Ann vol" value={`${indicatorRow.vol_ann.toFixed(1)}%`} />
+                    <Pill
+                      label="Ann vol"
+                      value={`${indicatorRow.vol_ann.toFixed(1)}%`}
+                      tip="Annualized volatility: standard deviation of daily returns scaled to one year. 15–20% is normal for large caps; 40%+ is wild."
+                    />
                   )}
                   {indicatorRow.bbUpper != null && indicatorRow.bbLower != null &&
                     indicatorRow.bbUpper !== indicatorRow.bbLower && fill > 0 && (
                       <Pill
                         label="BB"
                         value={`${(((fill - indicatorRow.bbLower) / (indicatorRow.bbUpper - indicatorRow.bbLower)) * 100).toFixed(0)}% band`}
+                        tip={INDICATOR_TIPS.BB + " The % value shows where today's price sits inside the band: 0% = lower band, 100% = upper, 50% = midline."}
                       />
                     )}
                 </div>
@@ -1140,7 +1204,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
               )}
             </div>
 
-            <div>
+            <div ref={voicesRef}>
               {/* Today's headlines (fed into agent prompts) */}
               <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2">
                 Today&apos;s headlines
@@ -1204,7 +1268,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
             Power-ups · optional · project a what-if scenario, or skip days
           </SectionLabel>
 
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4 mb-3">
+          <div ref={powerupsRef} className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4 mb-3">
             {/* What-if scenario — chip-style, matches Range/Overlay UI */}
             <div className="bg-[var(--bg-soft)] border border-[var(--border)] rounded-lg p-3">
               <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-semibold mb-2">
@@ -1403,7 +1467,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
           {/* ── §3 Make your move ─────────────────────────────────────────── */}
           <SectionLabel n={3}>Make your move — Buy, Hold, or Sell, then Confirm</SectionLabel>
 
-          <div className="bg-gradient-to-b from-[var(--bg-soft)] to-white border border-[var(--border)] rounded-xl p-4">
+          <div ref={yourMoveRef} className="bg-gradient-to-b from-[var(--bg-soft)] to-white border border-[var(--border)] rounded-xl p-4">
             <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
               <span className="text-[0.85rem] uppercase tracking-[0.08em] font-bold text-[var(--ink)]">
                 YOUR MOVE · DAY {dayIdx + 1}
@@ -1501,7 +1565,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
             Standings · you vs the hive
           </SectionLabel>
 
-          <div className="text-xs">
+          <div ref={standingsRef} className="text-xs">
             <div className="grid grid-cols-[40px_1fr_80px] gap-2 py-1 border-b border-[var(--border)] uppercase tracking-wider text-[var(--muted)] font-bold">
               <span>#</span>
               <span>Trader</span>
@@ -1550,6 +1614,43 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
           </div>
         </>
       )}
+
+      {/* Spotlight onboarding tutorial */}
+      {showTutorial && (() => {
+        const steps: TutorialStep[] = [
+          {
+            target: chartRef,
+            title: "1 · The chart + indicators",
+            body:
+              "Real 5 years of AAPL OHLCV. Switch the time window (1M / 3M / 1Y / 5Y / Sim) and toggle indicator overlays (SMA20 / Bollinger Bands / RSI / MACD / Volume). Hover any indicator chip for a plain-English explanation. The blue diamond marks today's open price — where you'll trade.",
+          },
+          {
+            target: voicesRef,
+            title: "2 · Headlines + 11 agent voices",
+            body:
+              "Today's real headlines feed into each agent's prompt. Then 11 LLM-driven agents (Cathie-style influencer, pod PM, activist short, retail FOMO, sell-side analyst, three economists, CTA, day trader, permabull) each post a public take. Click 👁 Peek to reveal their PRIVATE thoughts — they may say one thing in public and mean another (🎭). 3 peeks per day.",
+          },
+          {
+            target: powerupsRef,
+            title: "3 · Power-ups · 🌐 What-if & ⏩ Skip",
+            body:
+              "Run a scenario (\"War breaks out\", \"AI bubble bursts\", or type your own like \"Tim Cook resigns\") — Claude polls all 10 LLM agents in parallel and shows how each one would react in-character. Or use ⏩ Skip to fast-forward days; agents still trade and lie deterministically while you're skipping.",
+          },
+          {
+            target: yourMoveRef,
+            title: "4 · Your move",
+            body:
+              "Pick Buy, Hold, or Sell. Set the USD amount (or use the % slider). Trade preview shows exactly what will happen. Click Confirm & advance to lock the trade and roll the market forward one day. You have 32 trading days to beat the hive — and Buy & Hold.",
+          },
+          {
+            target: standingsRef,
+            title: "5 · Live standings",
+            body:
+              "Real-time leaderboard of You vs Buy & Hold vs all 8 agents with portfolios. At the end of 32 days you'll get a full recap: bar-chart standings, per-agent action table, daily action heatmap with deception flags, and your own activity stats.",
+          },
+        ];
+        return <Tutorial steps={steps} onClose={dismissTutorial} />;
+      })()}
     </div>
   );
 }
