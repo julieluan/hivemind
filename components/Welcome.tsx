@@ -27,7 +27,7 @@ export function Welcome({ onStart }: { onStart: (initCapital: number) => void })
     },
     {
       icon: "3",
-      iconBg: "bg-[#0891b2]",
+      iconBg: "bg-[var(--ink)]",
       title: "Manipulate the world · run events or skip time",
       body: "Trigger preset or custom events (\"War breaks out\", \"Tim Cook resigns\") — Claude polls all agents in parallel for live reactions. Or ⏩ skip 3 / 5 / 10 days; the hive keeps trading and lying without you.",
     },
