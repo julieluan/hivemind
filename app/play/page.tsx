@@ -1112,15 +1112,6 @@ export default function PlayPage() {
                   className="flex-1 px-2.5 py-1.5 text-[12px] border border-[var(--border)] rounded-md bg-white focus:border-[var(--ink)] outline-none"
                 />
                 <button
-                  onClick={() => {
-                    setActiveScenario(customEvent || scenarioKey);
-                    setLlmReactions([]);
-                  }}
-                  className="px-3 py-1.5 bg-[var(--ink)] text-white rounded-md text-[12px] font-semibold hover:opacity-90"
-                >
-                  Project (rule)
-                </button>
-                <button
                   onClick={async () => {
                     const ev = customEvent || scenarioKey;
                     setActiveScenario(ev);
@@ -1146,10 +1137,11 @@ export default function PlayPage() {
                       setLlmReactLoading(false);
                     }
                   }}
-                  className="px-3 py-1.5 bg-white border border-[var(--ink)] text-[var(--ink)] rounded-md text-[12px] font-semibold hover:bg-[var(--ink)] hover:text-white transition-colors"
-                  title="Calls Claude Haiku for each agent — takes 10-20s but gives real reasoning"
+                  disabled={llmReactLoading}
+                  className="px-4 py-1.5 bg-[var(--ink)] text-white rounded-md text-[12px] font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-wait"
+                  title="Calls Claude Haiku for each agent — takes 10-20s for real reasoning"
                 >
-                  🤖 Real LLM
+                  {llmReactLoading ? "🤖 Thinking…" : "🤖 Run scenario"}
                 </button>
                 {activeScenario && (
                   <button
@@ -1164,7 +1156,7 @@ export default function PlayPage() {
                 )}
               </div>
               <div className="text-[10px] text-[var(--muted)] mt-1.5">
-                Rule mode (instant): personality-based projections. LLM mode (10-20s): each agent really thinks.
+                Calls Claude on each agent in parallel — each one really thinks. ~10-20s.
               </div>
             </div>
 
@@ -1208,47 +1200,20 @@ export default function PlayPage() {
             const accent = dir === "crash" ? "#ea580c" : "#0891b2";
             const bg = dir === "crash" ? "#fff7ed" : "#ecfeff";
 
-            const useLLM = llmReactions.length > 0;
-            const ruleRows = useLLM
-              ? []
-              : rankedDecisions
-                  .filter((d) => AGENT_PERSONALITY[d.agentId])
-                  .map((d) => {
-                    const meta = HIVE_AGENTS_BY_ID[d.agentId];
-                    const r = reactToScenario(
-                      AGENT_PERSONALITY[d.agentId],
-                      dir,
-                      d.privateBelief.lean,
-                      d.privateBelief.conviction,
-                      activeScenario
-                    );
-                    return {
-                      key: d.agentId,
-                      name: meta?.name ?? d.agentId,
-                      role: meta?.roleLabel ?? "",
-                      action: r.label,
-                      color: r.color,
-                      reasoning: r.reasoning,
-                      conv: d.privateBelief.conviction,
-                    };
-                  });
-            const llmRows = useLLM
-              ? llmReactions.map((r) => {
-                  const meta = HIVE_AGENTS_BY_ID[r.agentId];
-                  const isLong = r.action.toLowerCase().includes("buy");
-                  const isShort = r.action.toLowerCase().includes("sell");
-                  return {
-                    key: r.agentId,
-                    name: meta?.name ?? r.agentName,
-                    role: meta?.roleLabel ?? r.agentRole,
-                    action: r.action,
-                    color: isLong ? "var(--gain)" : isShort ? "var(--loss)" : "var(--muted)",
-                    reasoning: r.reasoning,
-                    conv: r.conviction,
-                  };
-                })
-              : [];
-            const rows = useLLM ? llmRows : ruleRows;
+            const rows = llmReactions.map((r) => {
+              const meta = HIVE_AGENTS_BY_ID[r.agentId];
+              const isLong = r.action.toLowerCase().includes("buy");
+              const isShort = r.action.toLowerCase().includes("sell");
+              return {
+                key: r.agentId,
+                name: meta?.name ?? r.agentName,
+                role: meta?.roleLabel ?? r.agentRole,
+                action: r.action,
+                color: isLong ? "var(--gain)" : isShort ? "var(--loss)" : "var(--muted)",
+                reasoning: r.reasoning,
+                conv: r.conviction,
+              };
+            });
 
             return (
               <div
@@ -1261,16 +1226,15 @@ export default function PlayPage() {
                   </div>
                   <div className="text-[0.78rem] text-[var(--muted)]">
                     {isCustom ? "Custom event · shock unknown" : `Estimated shock ${scen.shock >= 0 ? "+" : ""}${(scen.shock * 100).toFixed(0)}% · ${scen.blurb}`}
-                    {" · "}
-                    <span className={useLLM ? "font-semibold" : ""} style={{ color: useLLM ? accent : undefined }}>
-                      {useLLM ? "🤖 LLM-driven" : "rule-based projection"}
-                    </span>
+                    {rows.length > 0 && (
+                      <span className="font-semibold" style={{ color: accent }}>{" · 🤖 LLM-driven"}</span>
+                    )}
                   </div>
                 </div>
 
                 {llmReactLoading && (
                   <div className="text-sm text-[var(--muted)] italic py-4 text-center">
-                    🤖 11 agents thinking about the scenario… (10-20s)
+                    🤖 10 agents thinking about the scenario… (10-20s)
                   </div>
                 )}
 
@@ -1296,9 +1260,7 @@ export default function PlayPage() {
 
                 {rows.length === 0 && !llmReactLoading && (
                   <div className="text-sm text-[var(--muted)] italic py-2">
-                    {isCustom
-                      ? "Custom event — click 🤖 Real LLM to get genuine agent reasoning (rule-based projection requires a preset event)."
-                      : "Click Project (rule) or 🤖 Real LLM to see agent reactions."}
+                    Click 🤖 Run scenario to see how each agent thinks about &ldquo;{activeScenario}&rdquo;.
                   </div>
                 )}
               </div>
