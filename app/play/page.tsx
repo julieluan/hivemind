@@ -1148,7 +1148,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
       {!isDone && (
         <>
           {/* ── §1 Market chart + §2 News & voices (side-by-side grid) ───── */}
-          <div className="grid grid-cols-1 md:grid-cols-[1.55fr_1fr] gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-[1.8fr_1fr] gap-6">
             <div ref={chartRef}>
               <SectionLabel n={1}>📈 Market chart</SectionLabel>
               {/* Range + overlay controls (inline above chart) */}
