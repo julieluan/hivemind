@@ -53,7 +53,7 @@ export function Welcome({ onStart }: { onStart: (initCapital: number) => void })
 
   return (
     <main className="min-h-screen flex items-center justify-center px-6 py-10">
-      <div className="max-w-4xl w-full">
+      <div className="max-w-2xl w-full">
         <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)] font-semibold mb-3 text-center">
           ⬡ Hivemind
         </div>
@@ -67,8 +67,8 @@ export function Welcome({ onStart }: { onStart: (initCapital: number) => void })
           32 trading days of real AAPL · powered by Claude Haiku
         </p>
 
-        {/* 2-column grid of feature cards — tighter copy */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-10">
+        {/* Single column of feature cards */}
+        <div className="flex flex-col gap-4 mb-10">
           {cards.map((c) => (
             <div key={c.title} className="flex items-start gap-3">
               <span

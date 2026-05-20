@@ -685,15 +685,17 @@ export default function PlayPage() {
 
       <div className="border-t border-[var(--grid)] mb-3" />
 
-      {/* ── Spotlight tutorial trigger (always available, top-right) ─────── */}
-      <div className="flex justify-end mb-1">
-        <button
-          onClick={() => setShowTutorial(true)}
-          className="text-[11px] text-[var(--muted)] hover:text-[var(--ink)] underline decoration-dotted underline-offset-4"
-        >
-          ? Take the tour
-        </button>
-      </div>
+      {/* ── Spotlight tutorial trigger (hidden after session ends) ───────── */}
+      {!isDone && (
+        <div className="flex justify-end mb-1">
+          <button
+            onClick={() => setShowTutorial(true)}
+            className="text-[11px] text-[var(--muted)] hover:text-[var(--ink)] underline decoration-dotted underline-offset-4"
+          >
+            ? Take the tour
+          </button>
+        </div>
+      )}
 
       {/* ── End-of-session — full recap ────────────────────────────────── */}
       {isDone && (() => {
@@ -708,7 +710,13 @@ export default function PlayPage() {
           avgPrivateConv: number;
           flipCount: number; // public vs private mismatch days
         }> = {};
+        // Only show agents who actually trade — the speakers (sell-side
+        // analyst + economists) have no portfolio and would show all "·" cells.
+        const portfolioAgentIds = new Set(
+          ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => a.id)
+        );
         for (const aid of Object.keys(HIVE_AGENTS_BY_ID)) {
+          if (!portfolioAgentIds.has(aid)) continue;
           const meta = HIVE_AGENTS_BY_ID[aid];
           agentStats[aid] = {
             name: meta.name,
@@ -1113,15 +1121,10 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
 
       {!isDone && (
         <>
-          {/* ── §1 Today's setup ─────────────────────────────────────────── */}
-          <SectionLabel n={1}>Today&apos;s setup</SectionLabel>
-
+          {/* ── §1 Market chart + §2 News & voices (side-by-side grid) ───── */}
           <div className="grid grid-cols-1 md:grid-cols-[1.55fr_1fr] gap-6">
             <div ref={chartRef}>
-              {/* Chart sub-header */}
-              <div className="text-[0.75rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2 flex items-center gap-2">
-                📈 Market chart
-              </div>
+              <SectionLabel n={1}>📈 Market chart</SectionLabel>
               {/* Range + overlay controls (inline above chart) */}
               <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <RangePills value={range} onChange={setRange} />
@@ -1209,10 +1212,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
             </div>
 
             <div ref={voicesRef}>
-              {/* Sub-header — this column isn't "today's market", it's signals */}
-              <div className="text-[0.75rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2 flex items-center gap-2">
-                💬 News &amp; voices
-              </div>
+              <SectionLabel n={2}>💬 News &amp; voices</SectionLabel>
               {/* Today's headlines (fed into agent prompts) */}
               <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--faint)] mb-2">
                 Today&apos;s headlines
@@ -1272,7 +1272,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
           </div>
 
           {/* ── §2 Power-ups (optional) ────────────────────────────────────── */}
-          <SectionLabel n={2} muted>
+          <SectionLabel n={3} muted>
             Power-ups · optional · project a what-if scenario, or skip days
           </SectionLabel>
 
@@ -1472,8 +1472,8 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
             );
           })()}
 
-          {/* ── §3 Make your move ─────────────────────────────────────────── */}
-          <SectionLabel n={3}>Make your move — Buy, Hold, or Sell, then Confirm</SectionLabel>
+          {/* ── §4 Make your move ─────────────────────────────────────────── */}
+          <SectionLabel n={4}>Make your move — Buy, Hold, or Sell, then Confirm</SectionLabel>
 
           <div ref={yourMoveRef} className="bg-gradient-to-b from-[var(--bg-soft)] to-white border border-[var(--border)] rounded-xl p-4">
             <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
@@ -1569,7 +1569,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
           </div>
 
           {/* ── Standings ─────────────────────────────────────────────────── */}
-          <SectionLabel n={4} muted>
+          <SectionLabel n={5} muted>
             Standings · you vs the hive
           </SectionLabel>
 
