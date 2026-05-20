@@ -781,16 +781,41 @@ export default function PlayPage() {
         const agentsBeaten = bars.filter((b) => !b.you && !b.isBH && b.pnl < pnlPct).length;
         const totalAgents = bars.filter((b) => !b.you && !b.isBH).length;
         const beatBH = pnlPct > bhPnl;
-        const headline =
-          userRank === 1
-            ? "🏆 You won the hive."
-            : beatBH && userRank <= totalAgents / 2 + 1
-              ? "👏 You beat Buy & Hold and most of the hive."
-              : beatBH
-                ? "✅ Beat Buy & Hold."
-                : userRank <= totalAgents / 2 + 1
-                  ? "👏 Solid run — beat half the hive."
-                  : "📉 Tough market — Buy & Hold and most agents beat you.";
+        // "Most" = strictly more than half of agents beaten
+        const beatMost = agentsBeaten > totalAgents / 2;
+        const inProfit = pnlPct > 0;
+        const bhHot = bhPnl > 10; // annualized this would be ~120% — hot streak
+        const userLast = userRank === bars.length;
+
+        // Headline decision matrix — separates "beat the hive" from "beat B&H"
+        // so a strong absolute run isn't shamed just because the market was hot.
+        let headline: string;
+        if (userRank === 1) {
+          headline = "🏆 You won the hive.";
+        } else if (beatBH && beatMost) {
+          headline = "🏆 Crushed it — beat both Buy & Hold and most of the hive.";
+        } else if (beatBH) {
+          headline = "✅ You beat Buy & Hold.";
+        } else if (beatMost && bhHot) {
+          headline = "👏 Strong run — beat most of the hive. Buy & Hold was on fire this stretch (a hard benchmark to crack).";
+        } else if (beatMost) {
+          headline = "👏 Beat most of the hive — Buy & Hold edged you out.";
+        } else if (agentsBeaten > 0 && inProfit) {
+          headline = "🙂 Profitable run — beat a few agents.";
+        } else if (inProfit) {
+          headline = "🙂 You finished in the green. The hive was sharper this round.";
+        } else if (userLast) {
+          headline = "📉 Tough round — finished last.";
+        } else {
+          headline = "📉 Red zone — finished in the loss column. Try a different strategy next round.";
+        }
+
+        // Context line — gives B&H its credit so user understands the bar
+        let bhContext = "";
+        if (bhPnl > 15) bhContext = `📈 AAPL Buy & Hold was unusually strong this run: +${bhPnl.toFixed(2)}%.`;
+        else if (bhPnl > 5) bhContext = `Buy & Hold returned +${bhPnl.toFixed(2)}% — a solid market backdrop.`;
+        else if (bhPnl < -5) bhContext = `📉 AAPL Buy & Hold was negative: ${bhPnl.toFixed(2)}% — a hard tape for everyone.`;
+        else bhContext = `Buy & Hold returned ${bhPnl >= 0 ? "+" : ""}${bhPnl.toFixed(2)}% — a sideways tape.`;
 
         // Days played vs skipped
         const daysPlayed = sums.length;
@@ -812,7 +837,8 @@ export default function PlayPage() {
                 {daysSkipped > 0 && ` · skipped ${daysSkipped}`}
                 {` of ${total}`}
               </div>
-              <div className="text-2xl font-semibold mb-2">{headline}</div>
+              <div className="text-2xl font-semibold mb-1 max-w-2xl mx-auto leading-snug">{headline}</div>
+              <div className="text-sm text-[var(--muted)] mb-3">{bhContext}</div>
               <div
                 className="text-5xl font-extrabold leading-none num tracking-tight"
                 style={{ color: pnlPct > 0 ? "var(--gain)" : "var(--loss)" }}
