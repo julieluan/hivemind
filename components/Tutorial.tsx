@@ -6,15 +6,11 @@ import { useEffect, useState, useLayoutEffect, type RefObject } from "react";
 // Tutorial — full-screen dim overlay with a spotlight cutout that highlights
 // one ref'd section at a time and shows a callout next to it.
 //
-// Usage:
-//   const refs = { chart: useRef(null), powerups: useRef(null), ... };
-//   <Tutorial
-//     steps={[
-//       { target: refs.chart, title: "...", body: "..." },
-//       ...
-//     ]}
-//     onClose={() => setShowTutorial(false)}
-//   />
+// Scroll behavior: the body is scroll-locked while the tutorial is open. On
+// each step change we scroll the target into view ONCE, then both the
+// spotlight cutout and the callout stay still until the user clicks Next.
+// (Previously we re-measured on every scroll event which made the cutout
+// jitter against the scroll input — felt buggy.)
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface TutorialStep {
@@ -36,41 +32,42 @@ export function Tutorial({
 
   const step = steps[idx];
 
-  // Compute target bounding box on mount + on step change + on resize/scroll
+  // Lock body scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // Measure target ONCE per step (after scrolling it into view)
   useLayoutEffect(() => {
-    const compute = () => {
-      const el = step?.target.current;
-      if (!el) {
-        setRect(null);
-        return;
-      }
-      // Scroll the element into view first
+    const el = step?.target.current;
+    if (!el) {
+      setRect(null);
+      return;
+    }
+    // Scroll into view first
+    el.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "center" });
+    // Then measure
+    requestAnimationFrame(() => {
       const r = el.getBoundingClientRect();
-      const offscreen = r.top < 60 || r.bottom > window.innerHeight - 60;
-      if (offscreen) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Wait a frame for the scroll to settle, then re-measure
-        requestAnimationFrame(() => {
-          const r2 = el.getBoundingClientRect();
-          setRect(r2);
-          setVp({ w: window.innerWidth, h: window.innerHeight });
-        });
-        return;
-      }
+      setRect(r);
+      setVp({ w: window.innerWidth, h: window.innerHeight });
+    });
+    // Re-measure only on window resize (not scroll)
+    const onResize = () => {
+      if (!step?.target.current) return;
+      const r = step.target.current.getBoundingClientRect();
       setRect(r);
       setVp({ w: window.innerWidth, h: window.innerHeight });
     };
-    compute();
-    const handler = () => compute();
-    window.addEventListener("resize", handler);
-    window.addEventListener("scroll", handler, { passive: true });
-    return () => {
-      window.removeEventListener("resize", handler);
-      window.removeEventListener("scroll", handler);
-    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [step]);
 
-  // Esc to dismiss
+  // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -78,22 +75,19 @@ export function Tutorial({
         if (idx < steps.length - 1) setIdx(idx + 1);
         else onClose();
       }
-      if (e.key === "ArrowLeft") {
-        if (idx > 0) setIdx(idx - 1);
-      }
+      if (e.key === "ArrowLeft" && idx > 0) setIdx(idx - 1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [idx, steps.length, onClose]);
 
   if (!step) return null;
-  const pad = 10;
-  const radius = 10;
+  const pad = 12;
+  const radius = 12;
 
-  // If we don't have the rect yet, render a centered notice
   if (!rect) {
     return (
-      <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center">
+      <div className="fixed inset-0 z-[100] bg-black/65 flex items-center justify-center">
         <div className="bg-white rounded-xl p-6 max-w-sm">
           <div className="text-sm text-[var(--muted)]">Loading tutorial…</div>
         </div>
@@ -101,18 +95,19 @@ export function Tutorial({
     );
   }
 
-  // Callout positioning: prefer below the cutout; fall back to above if no room
-  const calloutW = 360;
-  const calloutH = 180;
+  // Callout positioning
+  const calloutW = 400;
+  const calloutH = 160;
   const belowSpace = vp.h - rect.bottom - pad;
-  const placeBelow = belowSpace >= calloutH + 24;
-  const calloutTop = placeBelow ? rect.bottom + pad + 8 : rect.top - calloutH - pad - 8;
-  // Horizontal: clamp inside viewport
+  const placeBelow = belowSpace >= calloutH + 20;
+  const calloutTop = placeBelow
+    ? rect.bottom + pad + 12
+    : Math.max(12, rect.top - calloutH - pad - 12);
   const desiredLeft = rect.left + rect.width / 2 - calloutW / 2;
   const calloutLeft = Math.max(16, Math.min(vp.w - calloutW - 16, desiredLeft));
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-auto">
+    <div className="fixed inset-0 z-[100] pointer-events-auto" onWheel={(e) => e.preventDefault()}>
       {/* SVG dim layer with a rounded cutout */}
       <svg className="absolute inset-0 w-full h-full">
         <defs>
@@ -145,7 +140,7 @@ export function Tutorial({
           rx={radius}
           fill="none"
           stroke="#fde047"
-          strokeWidth={2.5}
+          strokeWidth={3}
           strokeDasharray="6 4"
           style={{ pointerEvents: "none" }}
         >
@@ -156,9 +151,9 @@ export function Tutorial({
       {/* Skip link top-right */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 text-xs uppercase tracking-wider text-white/80 hover:text-white px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md backdrop-blur transition-colors"
+        className="absolute top-4 right-4 text-sm uppercase tracking-wider text-white/90 hover:text-white px-3 py-2 bg-white/10 hover:bg-white/20 rounded-md backdrop-blur transition-colors"
       >
-        Skip tutorial · esc
+        Skip · esc
       </button>
 
       {/* Callout */}
@@ -169,27 +164,27 @@ export function Tutorial({
           left: calloutLeft,
           width: calloutW,
         }}
-        className="bg-white rounded-xl shadow-2xl border border-[var(--border)] p-4"
+        className="bg-white rounded-xl shadow-2xl border border-[var(--border)] p-5"
       >
-        <div className="flex items-baseline justify-between mb-2">
-          <div className="inline-flex items-center gap-2">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--ink)] text-white text-xs font-bold">
+        <div className="flex items-baseline justify-between mb-2.5">
+          <div className="inline-flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[var(--ink)] text-white text-sm font-bold">
               {idx + 1}
             </span>
-            <span className="text-[0.95rem] font-bold tracking-tight">{step.title}</span>
+            <span className="text-base font-bold tracking-tight">{step.title}</span>
           </div>
-          <span className="text-[10px] text-[var(--faint)] uppercase tracking-wider">
+          <span className="text-[11px] text-[var(--faint)] uppercase tracking-wider">
             {idx + 1} / {steps.length}
           </span>
         </div>
-        <div className="text-[0.85rem] text-[#374151] leading-snug mb-3">
+        <div className="text-[0.95rem] text-[#374151] leading-relaxed mb-4">
           {step.body}
         </div>
         <div className="flex items-center justify-between">
           <button
             onClick={() => idx > 0 && setIdx(idx - 1)}
             disabled={idx === 0}
-            className="text-xs text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-sm text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-30 disabled:cursor-not-allowed"
           >
             ← Back
           </button>
@@ -198,9 +193,9 @@ export function Tutorial({
               if (idx < steps.length - 1) setIdx(idx + 1);
               else onClose();
             }}
-            className="bg-[var(--ink)] text-white px-4 py-1.5 rounded-md text-xs font-semibold hover:opacity-90"
+            className="bg-[var(--ink)] text-white px-5 py-2 rounded-md text-sm font-semibold hover:opacity-90"
           >
-            {idx < steps.length - 1 ? "Next →" : "Got it · let's trade"}
+            {idx < steps.length - 1 ? "Next →" : "Got it"}
           </button>
         </div>
       </div>

@@ -1113,11 +1113,15 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
 
       {!isDone && (
         <>
-          {/* ── §1 Review market ──────────────────────────────────────────── */}
-          <SectionLabel n={1}>Review today&apos;s market</SectionLabel>
+          {/* ── §1 Today's setup ─────────────────────────────────────────── */}
+          <SectionLabel n={1}>Today&apos;s setup</SectionLabel>
 
           <div className="grid grid-cols-1 md:grid-cols-[1.55fr_1fr] gap-6">
             <div ref={chartRef}>
+              {/* Chart sub-header */}
+              <div className="text-[0.75rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2 flex items-center gap-2">
+                📈 Market chart
+              </div>
               {/* Range + overlay controls (inline above chart) */}
               <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <RangePills value={range} onChange={setRange} />
@@ -1205,8 +1209,12 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
             </div>
 
             <div ref={voicesRef}>
+              {/* Sub-header — this column isn't "today's market", it's signals */}
+              <div className="text-[0.75rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2 flex items-center gap-2">
+                💬 News &amp; voices
+              </div>
               {/* Today's headlines (fed into agent prompts) */}
-              <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2">
+              <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--faint)] mb-2">
                 Today&apos;s headlines
               </div>
               <div className="mb-5">
@@ -1620,33 +1628,33 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
         const steps: TutorialStep[] = [
           {
             target: chartRef,
-            title: "1 · The chart + indicators",
+            title: "Chart + indicators",
             body:
-              "Real 5 years of AAPL OHLCV. Switch the time window (1M / 3M / 1Y / 5Y / Sim) and toggle indicator overlays (SMA20 / Bollinger Bands / RSI / MACD / Volume). Hover any indicator chip for a plain-English explanation. The blue diamond marks today's open price — where you'll trade.",
+              "Real AAPL OHLCV. Switch the time window and toggle indicators (hover any chip for an explanation). The blue diamond is today's open — where you trade.",
           },
           {
             target: voicesRef,
-            title: "2 · Headlines + 11 agent voices",
+            title: "Headlines + agent voices",
             body:
-              "Today's real headlines feed into each agent's prompt. Then 11 LLM-driven agents (Cathie-style influencer, pod PM, activist short, retail FOMO, sell-side analyst, three economists, CTA, day trader, permabull) each post a public take. Click 👁 Peek to reveal their PRIVATE thoughts — they may say one thing in public and mean another (🎭). 3 peeks per day.",
+              "Today's real news feeds into every agent's prompt. 11 LLM-driven agents post public takes; click 👁 Peek to see their private thoughts (3 per day). Some lie 🎭.",
           },
           {
             target: powerupsRef,
-            title: "3 · Power-ups · 🌐 What-if & ⏩ Skip",
+            title: "Power-ups · what-if & skip",
             body:
-              "Run a scenario (\"War breaks out\", \"AI bubble bursts\", or type your own like \"Tim Cook resigns\") — Claude polls all 10 LLM agents in parallel and shows how each one would react in-character. Or use ⏩ Skip to fast-forward days; agents still trade and lie deterministically while you're skipping.",
+              "Run an event (preset or type your own — \"Tim Cook resigns\") and Claude polls all agents in parallel for in-character reactions. Or fast-forward days; the hive keeps trading.",
           },
           {
             target: yourMoveRef,
-            title: "4 · Your move",
+            title: "Your move",
             body:
-              "Pick Buy, Hold, or Sell. Set the USD amount (or use the % slider). Trade preview shows exactly what will happen. Click Confirm & advance to lock the trade and roll the market forward one day. You have 32 trading days to beat the hive — and Buy & Hold.",
+              "Pick Buy / Hold / Sell, set USD or %, see the trade preview, click Confirm to lock and advance. You have 32 days to beat the hive and Buy & Hold.",
           },
           {
             target: standingsRef,
-            title: "5 · Live standings",
+            title: "Live standings",
             body:
-              "Real-time leaderboard of You vs Buy & Hold vs all 8 agents with portfolios. At the end of 32 days you'll get a full recap: bar-chart standings, per-agent action table, daily action heatmap with deception flags, and your own activity stats.",
+              "Real-time leaderboard. End-game shows a full recap: bar chart, per-agent action counts, deception flags, and a daily action heatmap.",
           },
         ];
         return <Tutorial steps={steps} onClose={dismissTutorial} />;

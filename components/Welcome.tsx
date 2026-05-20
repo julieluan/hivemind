@@ -11,109 +11,77 @@ export function Welcome({ onStart }: { onStart: (initCapital: number) => void })
     { v: 10_000_000, lbl: "$10M" },
     { v: 100_000_000, lbl: "$100M" },
   ];
+
+  const cards: Array<{ icon: string; iconBg: string; title: string; body: string }> = [
+    {
+      icon: "1",
+      iconBg: "bg-[var(--ink)]",
+      title: "Read the market",
+      body: "Real AAPL chart with toggleable indicators (SMA / BB / RSI / MACD / Volume) and real news headlines fed into every agent's prompt.",
+    },
+    {
+      icon: "2",
+      iconBg: "bg-[var(--ink)]",
+      title: "11 LLM voices",
+      body: "Influencer, pod PM, activist short, permabull, retail FOMO, CTA quant, economists, day trader. Each holds a book and posts a public take.",
+    },
+    {
+      icon: "3",
+      iconBg: "bg-[var(--ink)]",
+      title: "Peek private thoughts · 3/day",
+      body: "Some say one thing in public, trade the opposite. 🎭 See who's really short while shouting \"long-term thesis intact.\"",
+    },
+    {
+      icon: "★",
+      iconBg: "bg-[#0891b2]",
+      title: "Trigger what-if events",
+      body: "\"War breaks out\" · \"AI bubble bursts\" · or type your own. Claude polls all 10 agents in parallel for live in-character reactions.",
+    },
+    {
+      icon: "⏩",
+      iconBg: "bg-[#7c3aed]",
+      title: "Skip days — hive keeps moving",
+      body: "Fast-forward 3 / 5 / 10 days. Agents still trade and lie based on real price action, so the recap stays whole.",
+    },
+    {
+      icon: "4",
+      iconBg: "bg-[var(--ink)]",
+      title: "Beat them by day 32",
+      body: "Live leaderboard vs you, Buy & Hold, and 8 agent books. End-game shows a heatmap of every action and every 🎭.",
+    },
+  ];
+
   return (
     <main className="min-h-screen flex items-center justify-center px-6 py-10">
-      <div className="max-w-2xl w-full">
+      <div className="max-w-4xl w-full">
         <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)] font-semibold mb-3 text-center">
           ⬡ Hivemind
         </div>
         <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight text-center mb-3">
           Outsmart the hive.
         </h1>
-        <p className="text-base text-[var(--muted)] text-center mb-2 max-w-md mx-auto">
+        <p className="text-base text-[var(--muted)] text-center mb-1">
           Eleven AI agents form a market. You&apos;re the twelfth trader.
         </p>
-        <p className="text-sm text-[var(--faint)] text-center mb-8 max-w-md mx-auto">
+        <p className="text-sm text-[var(--faint)] text-center mb-10">
           32 trading days of real AAPL · powered by Claude Haiku
         </p>
 
-        {/* What's inside */}
-        <div className="text-sm text-[#374151] space-y-4 mb-8 max-w-lg mx-auto">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--ink)] text-white text-[11px] font-bold flex-shrink-0 mt-0.5">
-              1
-            </span>
-            <div>
-              <div className="font-semibold mb-0.5">Read the market</div>
-              <div className="text-[var(--muted)]">
-                Real AAPL chart with SMA20 / BB / RSI / MACD / Volume.
-                Today&apos;s actual news headlines feed into each agent&apos;s prompt.
+        {/* 2-column grid of feature cards — tighter copy */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-10">
+          {cards.map((c) => (
+            <div key={c.title} className="flex items-start gap-3">
+              <span
+                className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${c.iconBg} text-white text-xs font-bold flex-shrink-0 mt-0.5`}
+              >
+                {c.icon}
+              </span>
+              <div>
+                <div className="font-semibold text-[0.95rem] mb-0.5">{c.title}</div>
+                <div className="text-sm text-[var(--muted)] leading-snug">{c.body}</div>
               </div>
             </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--ink)] text-white text-[11px] font-bold flex-shrink-0 mt-0.5">
-              2
-            </span>
-            <div>
-              <div className="font-semibold mb-0.5">Listen to 11 LLM-driven voices</div>
-              <div className="text-[var(--muted)]">
-                Cathie-style influencer · pod PM · activist short · permabull · retail FOMO · CTA quant ·
-                three economists · sell-side analyst · day trader. Each holds their own book and
-                posts a public take.
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--ink)] text-white text-[11px] font-bold flex-shrink-0 mt-0.5">
-              3
-            </span>
-            <div>
-              <div className="font-semibold mb-0.5">
-                Peek private thoughts (3 / day) — agents may lie
-              </div>
-              <div className="text-[var(--muted)]">
-                Some say one thing in public and trade the opposite. 🎭 The peek
-                lets you see who&apos;s actually short while shouting &ldquo;long-term thesis intact.&rdquo;
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#0891b2] text-white text-[11px] font-bold flex-shrink-0 mt-0.5">
-              ★
-            </span>
-            <div>
-              <div className="font-semibold mb-0.5">
-                Trigger a what-if event (preset or custom)
-              </div>
-              <div className="text-[var(--muted)]">
-                &ldquo;War breaks out&rdquo; · &ldquo;AI bubble bursts&rdquo; · &ldquo;Tim Cook resigns&rdquo; · or type
-                your own. Claude polls all 10 LLM agents in parallel and shows
-                how each one would react in-character.
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#7c3aed] text-white text-[11px] font-bold flex-shrink-0 mt-0.5">
-              ⏩
-            </span>
-            <div>
-              <div className="font-semibold mb-0.5">Skip days · agents keep trading</div>
-              <div className="text-[var(--muted)]">
-                Fast-forward 3 / 5 / 10 days. Each agent still trades + occasionally
-                deceives (driven by personality + real price action) — your end-game
-                recap stays coherent.
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--ink)] text-white text-[11px] font-bold flex-shrink-0 mt-0.5">
-              4
-            </span>
-            <div>
-              <div className="font-semibold mb-0.5">Trade. Beat them by day 32.</div>
-              <div className="text-[var(--muted)]">
-                Buy / Hold / Sell with USD or %. Live leaderboard vs you, Buy &amp;
-                Hold, and 8 agent portfolios. End-game recap with full action
-                heatmap and deception breakdown.
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Starting capital + Start */}
@@ -147,9 +115,8 @@ export function Welcome({ onStart }: { onStart: (initCapital: number) => void })
           </button>
         </div>
 
-        <p className="text-xs text-[var(--faint)] mt-8 text-center">
-          A guided tour kicks off on day 1 — you can dismiss it or come back via
-          &ldquo;? Take the tour&rdquo; at the top.
+        <p className="text-xs text-[var(--faint)] mt-6 text-center">
+          A 5-step tour kicks off on day 1 — dismiss it or replay via &ldquo;? Take the tour&rdquo;.
         </p>
       </div>
     </main>
