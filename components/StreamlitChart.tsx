@@ -260,14 +260,25 @@ export function StreamlitChart({
   // Y ticks (price row)
   const priceTicks = Array.from({ length: 5 }, (_, i) => pyMin + (i / 4) * (pyMax - pyMin));
 
-  // X labels — first / mid / last visible bar in window
-  const xLabelDates: string[] = [];
+  // X labels — first / mid / right-edge, with per-label anchoring so text
+  // never overflows the SVG. We drop the "last visible bar" label whenever
+  // today's marker is shown (they're adjacent and overlap visually).
+  const xLabels: { x: number; text: string; anchor: "start" | "middle" | "end" }[] = [];
   if (barsInWindow.length > 0) {
-    xLabelDates.push(barsInWindow[0].date);
-    if (barsInWindow.length > 2) xLabelDates.push(barsInWindow[Math.floor(barsInWindow.length / 2)].date);
-    if (barsInWindow.length > 1) xLabelDates.push(barsInWindow[barsInWindow.length - 1].date);
+    const first = barsInWindow[0];
+    xLabels.push({ x: xOfDate(first.date), text: first.date, anchor: "start" });
+    if (barsInWindow.length > 4) {
+      const mid = barsInWindow[Math.floor(barsInWindow.length / 2)];
+      xLabels.push({ x: xOfDate(mid.date), text: mid.date, anchor: "middle" });
+    }
   }
-  if (todayOpen != null) xLabelDates.push(todayDate);
+  if (todayOpen != null) {
+    // Right-edge label = today; never show last visible bar (would collide)
+    xLabels.push({ x: xOfDate(todayDate), text: todayDate, anchor: "end" });
+  } else if (barsInWindow.length > 1) {
+    const last = barsInWindow[barsInWindow.length - 1];
+    xLabels.push({ x: xOfDate(last.date), text: last.date, anchor: "end" });
+  }
 
   // ── Volume row ──────────────────────────────────────────────────────────
   let volMax = 0;
@@ -531,18 +542,18 @@ export function StreamlitChart({
           />
         ))}
 
-        {/* X axis labels */}
-        {xLabelDates.map((d, i) => (
+        {/* X axis labels — per-label anchoring to avoid right-edge overflow */}
+        {xLabels.map((l, i) => (
           <text
             key={`xl${i}`}
-            x={xOfDate(d)}
+            x={l.x}
             y={pad.top + innerH + 18}
             fontSize={10}
-            textAnchor="middle"
+            textAnchor={l.anchor}
             fill={MUTED}
             fontFamily="-apple-system, sans-serif"
           >
-            {d}
+            {l.text}
           </text>
         ))}
 
