@@ -43,38 +43,93 @@ function reactToScenario(
   personality: string,
   dir: "crash" | "rally",
   privLean: string,
-  conviction: number
-): { label: string; color: string; reason: string } {
+  conviction: number,
+  scenarioText: string
+): { label: string; color: string; reasoning: string } {
   const c = conviction || 0.5;
+  const event = scenarioText.length > 60 ? scenarioText.slice(0, 57) + "…" : scenarioText;
+
   if (personality === "momentum") {
     return dir === "crash"
-      ? { label: "Sell", color: "var(--loss)", reason: "follow downside momentum" }
-      : { label: "Buy", color: "var(--gain)", reason: "follow upside momentum" };
+      ? {
+          label: "Sell",
+          color: "var(--loss)",
+          reasoning: `My systematic trend signal flipped negative the moment "${event}" hit the tape. I don't argue with price — I follow the new regime. Cutting longs, may flip short if momentum extends.`,
+        }
+      : {
+          label: "Buy",
+          color: "var(--gain)",
+          reasoning: `Breakout signal triggered. "${event}" is the catalyst the tape needed. I add to the trend regardless of valuation — my edge is following price, not predicting it.`,
+        };
   }
   if (personality === "contrarian") {
+    const sz = Math.round(Math.min(0.75, 0.30 + 0.4 * c) * 100);
     return dir === "crash"
-      ? { label: `Buy ${Math.round(Math.min(0.75, 0.30 + 0.4 * c) * 100)}%`, color: "var(--gain)", reason: "buy the dip" }
-      : { label: "Trim", color: "var(--loss)", reason: "fade the rally" };
+      ? {
+          label: `Buy ${sz}%`,
+          color: "var(--gain)",
+          reasoning: `"${event}" is exactly the kind of overreaction my $5B fund waits for. I'm deploying ${sz}% of cash into quality names today, then going on CNBC to anchor the long-term narrative. Fear creates the alpha.`,
+        }
+      : {
+          label: "Trim",
+          color: "var(--loss)",
+          reasoning: `Crowd is chasing "${event}" — that's my cue to fade. I quietly distribute ${Math.round(0.15 * 100)}% of my biggest winners while still publicly bullish. Reflexivity works both ways.`,
+        };
   }
   if (personality === "panic_fomo") {
     return dir === "crash"
-      ? { label: "Sell all", color: "var(--loss)", reason: "panic out" }
-      : { label: "Buy max", color: "var(--gain)", reason: "FOMO into rally" };
+      ? {
+          label: "Sell all",
+          color: "var(--loss)",
+          reasoning: `Bro "${event}" just nuked my port. I'm out. All of it. I'll buy back higher if it bounces — I always do. Twitter is melting down, I'm not catching this knife.`,
+        }
+      : {
+          label: "Buy max",
+          color: "var(--gain)",
+          reasoning: `"${event}" — LFG! 🚀 Margin maxed, calls loaded, this is going to the moon. Cope and seethe to the bears. I will be drinking champagne tonight.`,
+        };
   }
   if (personality === "buy_dip") {
-    return { label: `Buy ${Math.round(Math.min(0.75, 0.30 + 0.4 * c) * 100)}%`, color: "var(--gain)", reason: dir === "crash" ? "buy dip" : "buy breakout" };
+    const sz = Math.round(Math.min(0.75, 0.30 + 0.4 * c) * 100);
+    return {
+      label: `Buy ${sz}%`,
+      color: "var(--gain)",
+      reasoning: dir === "crash"
+        ? `"${event}" is short-term noise. Apple has $200B in cash, a moat, and decades of compounding ahead. I'm adding ${sz}% — be greedy when others are fearful. My thesis hasn't changed in 15 years.`
+        : `Even after "${event}" rally, the multiple is still reasonable on a 10-year DCF. I add into strength. Holding period: forever.`,
+    };
   }
   if (personality === "short_focused") {
     return dir === "crash"
-      ? { label: "Add short", color: "var(--loss)", reason: "press the short" }
-      : { label: "Cover", color: "var(--muted)", reason: "cover into rally" };
+      ? {
+          label: "Add short",
+          color: "var(--loss)",
+          reasoning: `Called this. "${event}" validates my short thesis. Adding to the position — there's another 15-20% downside as the market re-rates. Publishing a follow-up report tomorrow.`,
+        }
+      : {
+          label: "Cover",
+          color: "var(--muted)",
+          reasoning: `"${event}" is squeezing me. Covering ${Math.round(0.30 * 100)}% of the position to manage risk, but my fundamental thesis stands. Will re-short if it gets back above resistance.`,
+        };
   }
   if (personality === "risk_cut") {
     return dir === "crash"
-      ? { label: privLean === "long" ? "Sell" : "Hold", color: "var(--loss)", reason: "risk-managed trim" }
-      : { label: "Hold", color: "var(--muted)", reason: "stay disciplined" };
+      ? {
+          label: privLean === "long" ? "Sell" : "Hold",
+          color: "var(--loss)",
+          reasoning: `"${event}" trips my Sharpe-protection rule. Cutting gross exposure by ${Math.round((privLean === "long" ? 0.5 : 0.2) * 100)}%. I'd rather underperform in upside than blow up — career risk dominates alpha capture for me.`,
+        }
+      : {
+          label: "Hold",
+          color: "var(--muted)",
+          reasoning: `Pod PMs don't chase. "${event}" is interesting but I size at my variance budget — adding now means giving back basis points. Holding the book steady, will reassess at month-end.`,
+        };
   }
-  return { label: "Hold", color: "var(--muted)", reason: "no edge" };
+  return {
+    label: "Hold",
+    color: "var(--muted)",
+    reasoning: `${personality} hasn't formed a strong view on "${event}" yet. Staying neutral until more signal emerges.`,
+  };
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -330,8 +385,13 @@ export default function PlayPage() {
   const [overlays, setOverlays] = useState<Overlay[]>(["RSI", "Volume"]);
   const [todayNews, setTodayNews] = useState<string[]>([]);
   const [scenarioKey, setScenarioKey] = useState<string>("War breaks out");
+  const [customEvent, setCustomEvent] = useState<string>("");
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [skipN, setSkipN] = useState<number>(3);
+  const [llmReactions, setLlmReactions] = useState<
+    Array<{ agentId: string; agentName: string; agentRole: string; action: string; reasoning: string; conviction: number }>
+  >([]);
+  const [llmReactLoading, setLlmReactLoading] = useState(false);
 
   useEffect(() => {
     if (!session) router.replace("/");
@@ -579,23 +639,259 @@ export default function PlayPage() {
         </div>
       )}
 
-      {/* ── End-of-session ──────────────────────────────────────────────── */}
-      {isDone && (
-        <div className="border-2 border-[var(--ink)] rounded-lg p-5 mb-4 bg-[var(--bg-soft)]">
-          <div className="text-xs uppercase tracking-wider text-[var(--muted)] mb-2 font-bold">
-            🏁 Session complete · 32 / 32 days
+      {/* ── End-of-session — full recap ────────────────────────────────── */}
+      {isDone && (() => {
+        const sums = session.daySummaries;
+        // Per-agent stats across the run
+        const agentStats: Record<string, {
+          name: string;
+          role: string;
+          deceptions: number;
+          actions: Record<string, number>;
+          avgPublicConv: number;
+          avgPrivateConv: number;
+          flipCount: number; // public vs private mismatch days
+        }> = {};
+        for (const aid of Object.keys(HIVE_AGENTS_BY_ID)) {
+          const meta = HIVE_AGENTS_BY_ID[aid];
+          agentStats[aid] = {
+            name: meta.name,
+            role: meta.roleLabel,
+            deceptions: 0,
+            actions: { buy_strong: 0, buy_lite: 0, hold: 0, sell_lite: 0, sell_strong: 0 },
+            avgPublicConv: 0,
+            avgPrivateConv: 0,
+            flipCount: 0,
+          };
+        }
+        for (const s of sums) {
+          for (const a of s.agents) {
+            const st = agentStats[a.agentId];
+            if (!st) continue;
+            if (a.deception) st.deceptions += 1;
+            st.actions[a.action] = (st.actions[a.action] || 0) + 1;
+            st.avgPublicConv += a.publicConv;
+            st.avgPrivateConv += a.privateConv;
+            if (a.publicLean !== a.privateLean) st.flipCount += 1;
+          }
+        }
+        const dayN = Math.max(1, sums.length);
+        for (const aid of Object.keys(agentStats)) {
+          agentStats[aid].avgPublicConv /= dayN;
+          agentStats[aid].avgPrivateConv /= dayN;
+        }
+
+        // Sorted agent list by deception count
+        const agentsList = Object.entries(agentStats)
+          .map(([aid, v]) => ({ aid, ...v }))
+          .sort((a, b) => b.deceptions - a.deceptions);
+
+        const totalDeceptions = agentsList.reduce((s, a) => s + a.deceptions, 0);
+        const totalPeeks = Object.values(session.peeksByDate).reduce((s, v) => s + v.length, 0);
+        const peekDays = Object.values(session.peeksByDate).filter((v) => v.length > 0).length;
+        const tradeDays = session.trades.filter((t) => t.sharesTraded > 0).length;
+        const holdDays = session.trades.length - tradeDays;
+
+        // Standings bar chart data
+        const bars = [
+          { name: "You", pnl: pnlPct, color: "#f59e0b", you: true },
+          { name: "Buy & Hold", pnl: bhPnl, color: "#94a3b8", you: false },
+          ...ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => ({
+            name: HIVE_AGENTS_BY_ID[a.id]?.name ?? a.name,
+            pnl: 0,
+            color: "#cbd5e1",
+            you: false,
+          })),
+        ].sort((a, b) => b.pnl - a.pnl);
+        const maxAbsPnl = Math.max(0.1, ...bars.map((b) => Math.abs(b.pnl)));
+        const userRank = bars.findIndex((b) => b.you) + 1;
+        const agentsBeaten = bars.filter((b) => !b.you && b.name !== "Buy & Hold" && b.pnl < pnlPct).length;
+        const totalAgents = bars.filter((b) => !b.you && b.name !== "Buy & Hold").length;
+        const headline = userRank <= 3
+          ? "🏆 You crushed it."
+          : userRank <= totalAgents / 2 + 1
+            ? "👏 Solid run."
+            : "📉 Tough market.";
+
+        const mostDeceptive = agentsList[0];
+        const fmtAction = (a: string) =>
+          ({ buy_strong: "Buy max", buy_lite: "Buy", hold: "Hold", sell_lite: "Sell", sell_strong: "Sell all" }[a] || a);
+
+        return (
+          <div className="border-2 border-[var(--ink)] rounded-lg p-6 mb-6 bg-[var(--bg-soft)]">
+            {/* Headline */}
+            <div className="text-center mb-6">
+              <div className="text-[0.78rem] uppercase tracking-[0.1em] text-[var(--muted)] font-bold mb-2">
+                🏁 Final results · {sums.length} / {total} days
+              </div>
+              <div className="text-2xl font-semibold mb-2">{headline}</div>
+              <div
+                className="text-5xl font-extrabold leading-none num tracking-tight"
+                style={{ color: pnlPct > 0 ? "var(--gain)" : "var(--loss)" }}
+              >
+                {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%
+              </div>
+              <div className="text-sm text-[var(--muted)] mt-2">
+                Final portfolio {fmtMoney(totalVal)} · started with {fmtMoney(u.initialCapital)}
+              </div>
+            </div>
+
+            {/* 4 KPI cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              {[
+                { label: "Beat", value: `${agentsBeaten} / ${totalAgents}`, sub: "AI agents" },
+                { label: "Rank", value: `#${userRank} / ${bars.length}`, sub: "incl. B&H" },
+                { label: "vs B&H", value: `${alpha >= 0 ? "+" : ""}${alpha.toFixed(2)}%`, sub: "alpha", color: alpha >= 0 ? "var(--gain)" : "var(--loss)" },
+                { label: "Trades", value: `${tradeDays}`, sub: `${holdDays} hold days` },
+              ].map((m) => (
+                <div key={m.label} className="bg-white border border-[var(--border)] rounded-md p-3 text-center">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] font-semibold mb-1">{m.label}</div>
+                  <div className="text-xl font-bold num" style={{ color: m.color }}>{m.value}</div>
+                  <div className="text-[11px] text-[var(--muted)] mt-0.5">{m.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Horizontal bar chart — all agents + user + B&H */}
+            <div className="bg-white border border-[var(--border)] rounded-md p-4 mb-6">
+              <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-bold mb-3">
+                Final standings
+              </div>
+              {bars.map((b) => {
+                const pct = (Math.abs(b.pnl) / maxAbsPnl) * 100;
+                const isPos = b.pnl > 0;
+                return (
+                  <div key={b.name} className="grid grid-cols-[140px_1fr_60px] gap-2 items-center py-1 text-sm">
+                    <span className={`truncate ${b.you ? "font-bold" : ""}`}>{b.name}</span>
+                    <div className="relative h-5 bg-[var(--bg-soft)] rounded overflow-hidden">
+                      <div
+                        className="absolute h-full"
+                        style={{
+                          left: isPos ? "50%" : `${50 - pct / 2}%`,
+                          width: `${pct / 2}%`,
+                          background: b.you ? "#f59e0b" : isPos ? "var(--gain)" : "var(--loss)",
+                          opacity: 0.85,
+                        }}
+                      />
+                      <div className="absolute top-0 bottom-0 left-1/2 w-px bg-[var(--border)]" />
+                    </div>
+                    <span
+                      className="text-right num font-semibold text-xs"
+                      style={{ color: b.pnl > 0 ? "var(--gain)" : b.pnl < 0 ? "var(--loss)" : "var(--muted)" }}
+                    >
+                      {b.pnl >= 0 ? "+" : ""}{b.pnl.toFixed(2)}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Per-agent breakdown — actions + deception + conviction */}
+            <div className="bg-white border border-[var(--border)] rounded-md p-4 mb-6">
+              <div className="flex items-baseline justify-between mb-3">
+                <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-bold">
+                  Per-agent recap · all {sums.length} days
+                </div>
+                <div className="text-[11px] text-[var(--muted)]">
+                  🎭 {totalDeceptions} total deceptions across the hive
+                  {mostDeceptive && mostDeceptive.deceptions > 0 && (
+                    <span> · most deceptive: <strong>{mostDeceptive.name}</strong> ({mostDeceptive.deceptions}×)</span>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_70px_70px_70px_70px_70px_60px_70px] gap-1 text-[10px] uppercase tracking-wider text-[var(--muted)] font-bold pb-1 border-b border-[var(--border)]">
+                <span>Agent</span>
+                <span className="text-center text-[var(--gain)]">Buy max</span>
+                <span className="text-center text-[var(--gain)]">Buy</span>
+                <span className="text-center">Hold</span>
+                <span className="text-center text-[var(--loss)]">Sell</span>
+                <span className="text-center text-[var(--loss)]">Sell all</span>
+                <span className="text-center" title="days where public lean differed from private">🎭 Lied</span>
+                <span className="text-right">Avg conv</span>
+              </div>
+              {agentsList.map((a) => (
+                <div
+                  key={a.aid}
+                  className="grid grid-cols-[1fr_70px_70px_70px_70px_70px_60px_70px] gap-1 py-1.5 text-xs border-b border-[var(--grid)] items-baseline"
+                >
+                  <span className="truncate">
+                    <strong>{a.name}</strong>
+                    <span className="text-[10px] text-[var(--faint)] ml-1.5">{a.role}</span>
+                  </span>
+                  <span className="text-center num">{a.actions.buy_strong || "·"}</span>
+                  <span className="text-center num">{a.actions.buy_lite || "·"}</span>
+                  <span className="text-center num">{a.actions.hold || "·"}</span>
+                  <span className="text-center num">{a.actions.sell_lite || "·"}</span>
+                  <span className="text-center num">{a.actions.sell_strong || "·"}</span>
+                  <span className="text-center num" style={{ color: a.deceptions > 0 ? "var(--loss)" : "var(--muted)" }}>
+                    {a.deceptions > 0 ? `${a.deceptions}/${sums.length}` : "0"}
+                  </span>
+                  <span className="text-right num text-[11px]">
+                    pub <strong>{Math.round(a.avgPublicConv * 100)}%</strong>
+                    {a.avgPrivateConv > 0 && (
+                      <span className="text-[var(--faint)]"> / priv {Math.round(a.avgPrivateConv * 100)}%</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Your activity */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+              <div className="bg-white border border-[var(--border)] rounded-md p-4">
+                <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-bold mb-2">
+                  Your activity
+                </div>
+                <div className="text-sm space-y-1">
+                  <div>Peeked private thoughts <strong>{totalPeeks}×</strong> across <strong>{peekDays}</strong> days
+                    {peekDays > 0 && <span className="text-[var(--muted)]"> (avg {(totalPeeks / peekDays).toFixed(1)} / peek day)</span>}
+                  </div>
+                  <div>Traded on <strong>{tradeDays}</strong> days · held on <strong>{holdDays}</strong> days</div>
+                  {session.trades.length > 0 && (
+                    <div>
+                      Best day {Math.max(...session.trades.map((t) => t.dayReturnPct)).toFixed(2)}% ·{" "}
+                      Worst day {Math.min(...session.trades.map((t) => t.dayReturnPct)).toFixed(2)}%
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white border border-[var(--border)] rounded-md p-4">
+                <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-bold mb-2">
+                  Hive net pressure
+                </div>
+                <div className="text-sm">
+                  Average net pressure over the run:{" "}
+                  <strong className="num">
+                    {sums.length > 0
+                      ? ((sums.reduce((s, x) => s + (x.netPressure || 0), 0) / sums.length) * 100).toFixed(1)
+                      : "0.0"}%
+                  </strong>{" "}
+                  (positive = buy pressure)
+                </div>
+                <div className="text-xs text-[var(--muted)] mt-1">
+                  Pressure spike days:{" "}
+                  {sums
+                    .map((s, i) => ({ s, i }))
+                    .filter((x) => Math.abs(x.s.netPressure) > 0.3)
+                    .slice(0, 3)
+                    .map((x) => `${x.s.date} (${(x.s.netPressure * 100).toFixed(0)}%)`)
+                    .join(" · ") || "none"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={reset}
+                className="bg-[var(--ink)] text-white px-6 py-2.5 rounded-md text-sm font-semibold hover:opacity-90"
+              >
+                ↻ Play again
+              </button>
+            </div>
           </div>
-          <h2 className="text-2xl font-bold mb-2 tracking-tight">
-            {alpha >= 0 ? "You beat Buy & Hold." : "The hive won this round."}
-          </h2>
-          <p className="text-sm text-[var(--muted)]">
-            Final NAV {fmtMoney(totalVal)} · session {pnlPct.toFixed(2)}% · B&H {bhPnl.toFixed(2)}% · alpha {alpha.toFixed(2)}%
-          </p>
-          <button onClick={reset} className="mt-4 bg-[var(--ink)] text-white px-5 py-2 rounded-md text-sm font-semibold">
-            ↺ Reset
-          </button>
-        </div>
-      )}
+        );
+      })()}
 
       {!isDone && (
         <>
@@ -746,122 +1042,236 @@ export default function PlayPage() {
             Power-ups · optional · project a what-if scenario, or skip days
           </SectionLabel>
 
-          <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-4 mb-2">
-            {/* What-if scenario */}
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4 mb-3">
+            {/* What-if scenario — chip-style, matches Range/Overlay UI */}
             <div className="bg-[var(--bg-soft)] border border-[var(--border)] rounded-lg p-3">
               <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-semibold mb-2">
-                🌐 What-if scenario · agents react live
+                🌐 What-if scenario · agents react
               </div>
-              <div className="flex gap-2 flex-wrap items-stretch">
-                <select
-                  value={scenarioKey}
-                  onChange={(e) => setScenarioKey(e.target.value)}
-                  className="flex-1 min-w-[200px] px-3 py-2 border border-[var(--border)] rounded-md text-sm bg-white focus:border-[var(--ink)] outline-none"
-                >
-                  {Object.keys(SCENARIOS).map((k) => (
-                    <option key={k} value={k}>
+              {/* Preset chips */}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {Object.keys(SCENARIOS).map((k) => {
+                  const on = scenarioKey === k && !customEvent;
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => {
+                        setScenarioKey(k);
+                        setCustomEvent("");
+                      }}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
+                        on
+                          ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                          : "bg-white text-[var(--muted)] border-[var(--border)] hover:border-[var(--ink)]"
+                      }`}
+                    >
                       {k}
-                    </option>
-                  ))}
-                </select>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Custom event input */}
+              <div className="flex gap-1.5 items-stretch">
+                <input
+                  type="text"
+                  value={customEvent}
+                  onChange={(e) => setCustomEvent(e.target.value)}
+                  placeholder="Or type your own event: Trump bans iPhone in EU…"
+                  className="flex-1 px-2.5 py-1.5 text-[12px] border border-[var(--border)] rounded-md bg-white focus:border-[var(--ink)] outline-none"
+                />
                 <button
-                  onClick={() => setActiveScenario(scenarioKey)}
-                  className="px-4 py-2 bg-[var(--ink)] text-white rounded-md text-sm font-semibold hover:opacity-90"
+                  onClick={() => {
+                    setActiveScenario(customEvent || scenarioKey);
+                    setLlmReactions([]);
+                  }}
+                  className="px-3 py-1.5 bg-[var(--ink)] text-white rounded-md text-[12px] font-semibold hover:opacity-90"
                 >
-                  Project
+                  Project (rule)
+                </button>
+                <button
+                  onClick={async () => {
+                    const ev = customEvent || scenarioKey;
+                    setActiveScenario(ev);
+                    setLlmReactLoading(true);
+                    setLlmReactions([]);
+                    try {
+                      const shockPct = SCENARIOS[ev]?.shock;
+                      const resp = await fetch("/api/agents/scenario-react", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          scenarioText: ev,
+                          shockPct,
+                          ticker: session.ticker,
+                          asOfDate: todayBar?.date ?? "today",
+                        }),
+                      });
+                      const j = await resp.json();
+                      setLlmReactions(j.reactions ?? []);
+                    } catch {
+                      // surface in UI via empty result
+                    } finally {
+                      setLlmReactLoading(false);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-white border border-[var(--ink)] text-[var(--ink)] rounded-md text-[12px] font-semibold hover:bg-[var(--ink)] hover:text-white transition-colors"
+                  title="Calls Claude Haiku for each agent — takes 10-20s but gives real reasoning"
+                >
+                  🤖 Real LLM
                 </button>
                 {activeScenario && (
                   <button
-                    onClick={() => setActiveScenario(null)}
-                    className="px-4 py-2 border border-[var(--border)] rounded-md text-sm font-semibold hover:border-[var(--ink)]"
+                    onClick={() => {
+                      setActiveScenario(null);
+                      setLlmReactions([]);
+                    }}
+                    className="px-3 py-1.5 border border-[var(--border)] rounded-md text-[12px] font-semibold hover:border-[var(--ink)]"
                   >
                     Clear
                   </button>
                 )}
               </div>
-
-              {activeScenario && (() => {
-                const scen = SCENARIOS[activeScenario];
-                const accent = scen.dir === "crash" ? "#ea580c" : "#0891b2";
-                const bg = scen.dir === "crash" ? "#fff7ed" : "#ecfeff";
-                return (
-                  <div
-                    className="mt-3 rounded-md p-3 border-l-[3px]"
-                    style={{ background: bg, borderColor: accent, borderTopColor: accent, borderRightColor: accent, borderBottomColor: accent }}
-                  >
-                    <div className="flex items-baseline justify-between mb-1">
-                      <div className="text-[0.78rem] font-bold uppercase tracking-wider" style={{ color: accent }}>
-                        🌐 If {activeScenario}
-                      </div>
-                      <div className="text-[0.75rem] text-[var(--muted)]">
-                        shock {scen.shock >= 0 ? "+" : ""}{(scen.shock * 100).toFixed(0)}%
-                      </div>
-                    </div>
-                    <div className="text-[0.8rem] text-[var(--muted)] mb-2">{scen.blurb}</div>
-                    {rankedDecisions.length > 0 && (
-                      <div className="text-xs">
-                        {rankedDecisions
-                          .filter((d) => AGENT_PERSONALITY[d.agentId])
-                          .map((d) => {
-                            const meta = HIVE_AGENTS_BY_ID[d.agentId];
-                            const r = reactToScenario(
-                              AGENT_PERSONALITY[d.agentId],
-                              scen.dir,
-                              d.privateBelief.lean,
-                              d.privateBelief.conviction
-                            );
-                            return (
-                              <div
-                                key={d.agentId}
-                                className="flex items-baseline gap-2 py-1 border-t border-[#f1f5f9]"
-                              >
-                                <span className="font-semibold min-w-[120px]">{meta?.name ?? d.agentId}</span>
-                                <span className="text-[var(--faint)] text-[10px]">{meta?.roleLabel ?? ""}</span>
-                                <span className="ml-auto font-semibold" style={{ color: r.color }}>
-                                  → {r.label}
-                                </span>
-                                <span className="text-[var(--muted)] italic text-[11px] min-w-[140px] text-right">
-                                  {r.reason}
-                                </span>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              <div className="text-[10px] text-[var(--muted)] mt-1.5">
+                Rule mode (instant): personality-based projections. LLM mode (10-20s): each agent really thinks.
+              </div>
             </div>
 
-            {/* Skip N days */}
+            {/* Skip N days — narrow column */}
             <div className="bg-[var(--bg-soft)] border border-[var(--border)] rounded-lg p-3">
               <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-semibold mb-2">
-                ⏩ Skip days · no trade
+                ⏩ Skip days
               </div>
-              <div className="flex gap-2">
-                <select
-                  value={skipN}
-                  onChange={(e) => setSkipN(Number(e.target.value))}
-                  className="flex-1 px-3 py-2 border border-[var(--border)] rounded-md text-sm bg-white focus:border-[var(--ink)] outline-none"
-                >
-                  {[3, 5, 10].map((n) => (
-                    <option key={n} value={n}>
-                      {n} days
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => skipDays(skipN)}
-                  className="px-4 py-2 bg-[var(--ink)] text-white rounded-md text-sm font-semibold hover:opacity-90"
-                >
-                  Skip
-                </button>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[3, 5, 10].map((n) => {
+                  const on = skipN === n;
+                  return (
+                    <button
+                      key={n}
+                      onClick={() => setSkipN(n)}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
+                        on
+                          ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                          : "bg-white text-[var(--muted)] border-[var(--border)] hover:border-[var(--ink)]"
+                      }`}
+                    >
+                      {n}d
+                    </button>
+                  );
+                })}
               </div>
-              <div className="text-[10px] text-[var(--muted)] mt-2">
-                Holds your current position. No trade is executed.
-              </div>
+              <button
+                onClick={() => skipDays(skipN)}
+                className="w-full px-3 py-1.5 bg-[var(--ink)] text-white rounded-md text-[12px] font-semibold hover:opacity-90"
+              >
+                Skip {skipN} days
+              </button>
             </div>
           </div>
+
+          {/* Full-width what-if result panel — breaks out of the cards above */}
+          {activeScenario && (() => {
+            const scen = SCENARIOS[activeScenario];
+            const isCustom = !scen;
+            const dir: "crash" | "rally" = scen?.dir ?? "crash";
+            const accent = dir === "crash" ? "#ea580c" : "#0891b2";
+            const bg = dir === "crash" ? "#fff7ed" : "#ecfeff";
+
+            const useLLM = llmReactions.length > 0;
+            const ruleRows = useLLM
+              ? []
+              : rankedDecisions
+                  .filter((d) => AGENT_PERSONALITY[d.agentId])
+                  .map((d) => {
+                    const meta = HIVE_AGENTS_BY_ID[d.agentId];
+                    const r = reactToScenario(
+                      AGENT_PERSONALITY[d.agentId],
+                      dir,
+                      d.privateBelief.lean,
+                      d.privateBelief.conviction,
+                      activeScenario
+                    );
+                    return {
+                      key: d.agentId,
+                      name: meta?.name ?? d.agentId,
+                      role: meta?.roleLabel ?? "",
+                      action: r.label,
+                      color: r.color,
+                      reasoning: r.reasoning,
+                      conv: d.privateBelief.conviction,
+                    };
+                  });
+            const llmRows = useLLM
+              ? llmReactions.map((r) => {
+                  const meta = HIVE_AGENTS_BY_ID[r.agentId];
+                  const isLong = r.action.toLowerCase().includes("buy");
+                  const isShort = r.action.toLowerCase().includes("sell");
+                  return {
+                    key: r.agentId,
+                    name: meta?.name ?? r.agentName,
+                    role: meta?.roleLabel ?? r.agentRole,
+                    action: r.action,
+                    color: isLong ? "var(--gain)" : isShort ? "var(--loss)" : "var(--muted)",
+                    reasoning: r.reasoning,
+                    conv: r.conviction,
+                  };
+                })
+              : [];
+            const rows = useLLM ? llmRows : ruleRows;
+
+            return (
+              <div
+                className="rounded-lg p-4 mb-4 border-l-[4px]"
+                style={{ background: bg, border: `1px solid ${accent}`, borderLeftWidth: 4 }}
+              >
+                <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+                  <div className="text-[0.85rem] font-bold uppercase tracking-wider" style={{ color: accent }}>
+                    🌐 If &ldquo;{activeScenario}&rdquo;
+                  </div>
+                  <div className="text-[0.78rem] text-[var(--muted)]">
+                    {isCustom ? "Custom event · shock unknown" : `Estimated shock ${scen.shock >= 0 ? "+" : ""}${(scen.shock * 100).toFixed(0)}% · ${scen.blurb}`}
+                    {" · "}
+                    <span className={useLLM ? "font-semibold" : ""} style={{ color: useLLM ? accent : undefined }}>
+                      {useLLM ? "🤖 LLM-driven" : "rule-based projection"}
+                    </span>
+                  </div>
+                </div>
+
+                {llmReactLoading && (
+                  <div className="text-sm text-[var(--muted)] italic py-4 text-center">
+                    🤖 11 agents thinking about the scenario… (10-20s)
+                  </div>
+                )}
+
+                {rows.length > 0 && (
+                  <div className="space-y-2">
+                    {rows.map((r) => (
+                      <div key={r.key} className="bg-white/70 border border-white rounded-md p-2.5">
+                        <div className="flex items-baseline gap-2 mb-1">
+                          <span className="font-bold text-[0.92rem]">{r.name}</span>
+                          <span className="text-[11px] text-[var(--faint)]">{r.role}</span>
+                          <span className="ml-auto text-[11px] text-[var(--muted)]">
+                            conviction {Math.round(r.conv * 100)}%
+                          </span>
+                          <span className="font-bold text-[0.92rem]" style={{ color: r.color }}>
+                            → {r.action}
+                          </span>
+                        </div>
+                        <div className="text-[0.85rem] text-[#374151] leading-snug">{r.reasoning}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {rows.length === 0 && !llmReactLoading && (
+                  <div className="text-sm text-[var(--muted)] italic py-2">
+                    {isCustom
+                      ? "Custom event — click 🤖 Real LLM to get genuine agent reasoning (rule-based projection requires a preset event)."
+                      : "Click Project (rule) or 🤖 Real LLM to see agent reactions."}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── §3 Make your move ─────────────────────────────────────────── */}
           <SectionLabel n={3}>Make your move — Buy, Hold, or Sell, then Confirm</SectionLabel>
@@ -946,12 +1356,17 @@ export default function PlayPage() {
               <div>{preview}</div>
             </div>
 
-            <button
-              onClick={handleCommit}
-              className="w-full bg-[var(--ink)] text-white py-3 rounded-md font-semibold text-sm hover:opacity-90 transition-opacity"
-            >
-              Confirm &amp; advance to next day →
-            </button>
+            <div className="flex justify-end items-center gap-2 mt-1">
+              <span className="text-[11px] text-[var(--muted)] mr-2">
+                Locks today&apos;s trade and rolls the market forward one day.
+              </span>
+              <button
+                onClick={handleCommit}
+                className="bg-[var(--ink)] text-white px-5 py-2 rounded-md font-semibold text-sm hover:opacity-90 transition-opacity"
+              >
+                Confirm &amp; advance →
+              </button>
+            </div>
           </div>
 
           {/* ── Standings ─────────────────────────────────────────────────── */}

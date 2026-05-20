@@ -122,6 +122,22 @@ export interface TradeRecord {
   dayReturnPct: number;
 }
 
+// Lightweight per-day record kept across the session for the end-game recap.
+// Captured at advance time so we don't bloat persisted state with full prompts.
+export interface DaySummary {
+  date: string;
+  agents: Array<{
+    agentId: string;
+    publicLean: PublicStatement["statedLean"];
+    publicConv: number;
+    privateLean: PrivateBelief["lean"];
+    privateConv: number;
+    action: ActionType;
+    deception: boolean; // public lean diverges from private lean
+  }>;
+  netPressure: number;
+}
+
 export interface GameSession {
   sessionId: string; // uuid
   ticker: string;
@@ -133,8 +149,8 @@ export interface GameSession {
   trades: TradeRecord[];
   // Peek mechanic: 3/day reveals of private_belief
   peeksByDate: Record<string, string[]>; // date → agentIds revealed that day
-  // What-if scenarios projected (preview only, doesn't affect state)
-  // Optional: scenario forecasts displayed transiently
+  // Per-day journey for the end-game recap
+  daySummaries: DaySummary[];
 }
 
 // ─── API request/response contracts ─────────────────────────────────────────
