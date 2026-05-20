@@ -860,6 +860,136 @@ export default function PlayPage() {
               ))}
             </div>
 
+            {/* Per-day per-agent action heatmap — hover for details */}
+            <div className="bg-white border border-[var(--border)] rounded-md p-4 mb-6 overflow-x-auto">
+              <div className="flex items-baseline justify-between mb-3">
+                <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-bold">
+                  Daily actions · {sums.length} days × {agentsList.length} agents
+                </div>
+                <div className="text-[10px] text-[var(--muted)] flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 rounded-sm bg-[var(--gain)]" /> Buy
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 rounded-sm bg-[var(--gain)] opacity-50" /> Buy lite
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 rounded-sm bg-[var(--bg-soft)] border border-[var(--border)]" /> Hold
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 rounded-sm bg-[var(--loss)] opacity-50" /> Sell lite
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 rounded-sm bg-[var(--loss)]" /> Sell
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    🎭 deception
+                  </span>
+                </div>
+              </div>
+              {(() => {
+                const cellColor = (a: ActionType): { bg: string; opacity: number } => {
+                  if (a === "buy_strong") return { bg: "var(--gain)", opacity: 1 };
+                  if (a === "buy_lite") return { bg: "var(--gain)", opacity: 0.5 };
+                  if (a === "sell_lite") return { bg: "var(--loss)", opacity: 0.5 };
+                  if (a === "sell_strong") return { bg: "var(--loss)", opacity: 1 };
+                  return { bg: "var(--bg-soft)", opacity: 1 };
+                };
+                const cellSize = 18;
+                const colHeader = (
+                  <div className="grid sticky top-0 bg-white z-10" style={{ gridTemplateColumns: `170px repeat(${sums.length}, ${cellSize}px)`, gap: 2 }}>
+                    <div />
+                    {sums.map((s, i) => (
+                      <div
+                        key={s.date}
+                        className="text-[8px] text-[var(--faint)] font-mono text-center leading-none origin-bottom-left"
+                        style={{ transform: "rotate(-60deg) translateY(8px)", height: 30 }}
+                        title={s.date}
+                      >
+                        {i + 1}
+                      </div>
+                    ))}
+                  </div>
+                );
+                return (
+                  <div style={{ minWidth: 170 + (cellSize + 2) * sums.length }}>
+                    {colHeader}
+                    {agentsList.map((a) => (
+                      <div
+                        key={a.aid}
+                        className="grid items-center"
+                        style={{ gridTemplateColumns: `170px repeat(${sums.length}, ${cellSize}px)`, gap: 2, marginTop: 2 }}
+                      >
+                        <div className="text-xs truncate pr-2">
+                          <span className="font-semibold">{a.name}</span>
+                          <span className="text-[10px] text-[var(--faint)] ml-1">{a.role}</span>
+                        </div>
+                        {sums.map((s) => {
+                          const entry = s.agents.find((x) => x.agentId === a.aid);
+                          if (!entry) {
+                            return (
+                              <div
+                                key={s.date}
+                                style={{ width: cellSize, height: cellSize, background: "var(--bg-soft)", borderRadius: 3 }}
+                                title={`${s.date}: no data`}
+                              />
+                            );
+                          }
+                          const { bg, opacity } = cellColor(entry.action);
+                          const actLabel = {
+                            buy_strong: "Buy max",
+                            buy_lite: "Buy",
+                            hold: "Hold",
+                            sell_lite: "Sell",
+                            sell_strong: "Sell all",
+                          }[entry.action];
+                          const tip = `${s.date} · ${actLabel}
+public: ${entry.publicLean} ${Math.round(entry.publicConv * 100)}%
+private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.deception ? "\n🎭 DECEPTION — said public ≠ truth" : ""}`;
+                          return (
+                            <div
+                              key={s.date}
+                              style={{
+                                width: cellSize,
+                                height: cellSize,
+                                background: bg,
+                                opacity,
+                                borderRadius: 3,
+                                border: entry.deception ? "1.5px solid #d97706" : entry.action === "hold" ? "1px solid var(--border)" : "none",
+                                position: "relative",
+                                cursor: "help",
+                              }}
+                              title={tip}
+                            >
+                              {entry.deception && (
+                                <span
+                                  style={{
+                                    position: "absolute",
+                                    top: -3,
+                                    right: -3,
+                                    fontSize: 10,
+                                    lineHeight: 1,
+                                    pointerEvents: "none",
+                                  }}
+                                >
+                                  🎭
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              <div className="text-[10px] text-[var(--muted)] mt-2 italic">
+                Hover any cell for the agent&apos;s action, public &amp; private lean, and conviction.
+                Skip-day cells are deterministic projections (based on personality + price move),
+                not real LLM calls.
+              </div>
+            </div>
+
             {/* Your activity */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
               <div className="bg-white border border-[var(--border)] rounded-md p-4">
@@ -1184,7 +1314,10 @@ export default function PlayPage() {
                 })}
               </div>
               <button
-                onClick={() => skipDays(skipN)}
+                onClick={() => {
+                  const slice = tradingPrices.slice(dayIdx, dayIdx + skipN);
+                  skipDays(slice);
+                }}
                 className="w-full px-3 py-1.5 bg-[var(--ink)] text-white rounded-md text-[12px] font-semibold hover:opacity-90"
               >
                 Skip {skipN} days

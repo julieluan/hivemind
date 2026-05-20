@@ -53,8 +53,11 @@ interface GameStore {
     fillPrice: number;
     realCloseToday: number;
   }) => void;
-  // Power-up: skip N trading days without trading. Bumps day index by n.
-  skipDays: (n: number) => void;
+  // Power-up: skip the next N trading days. Agents trade deterministically on
+  // each skipped day (using personality heuristics + actual price moves) so
+  // the hive doesn't freeze — caller passes the price bars for the skipped
+  // window (already sliced from the loaded prices).
+  skipDays: (priceBars: import("./types").PriceBar[]) => void;
   reset: () => void;
 }
 
@@ -295,15 +298,30 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
-      skipDays: (n) => {
+      skipDays: (priceBars) => {
         const session = get().session;
         if (!session) return;
-        const nextIdx = Math.min(session.totalDays, session.currentDayIdx + n);
+        const cappedBars = priceBars.slice(
+          0,
+          session.totalDays - session.currentDayIdx
+        );
+        if (cappedBars.length === 0) return;
+
+        const { simulateSkippedDays } = require("./skip-simulator") as typeof import("./skip-simulator");
+        const sim = simulateSkippedDays({
+          bars: cappedBars,
+          portfolios: session.agentPortfolios,
+          seed: session.currentDayIdx + 17,
+        });
+
+        const nextIdx = session.currentDayIdx + cappedBars.length;
         set({
           session: {
             ...session,
             currentDayIdx: nextIdx,
             isComplete: nextIdx >= session.totalDays,
+            daySummaries: [...session.daySummaries, ...sim.daySummaries],
+            agentPortfolios: sim.portfolios,
           },
           today: null,
           pendingAction: "hold",
