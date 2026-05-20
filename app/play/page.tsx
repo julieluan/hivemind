@@ -16,6 +16,68 @@ import { HIVE_AGENTS_BY_ID, fmtMoney, isDeception } from "@/lib/agent-meta";
 import { StreamlitChart, type RangeKey, type Overlay } from "@/components/StreamlitChart";
 
 // ────────────────────────────────────────────────────────────────
+// What-if scenarios — same shape as Streamlit's SCENARIOS dict
+// ────────────────────────────────────────────────────────────────
+
+const SCENARIOS: Record<string, { shock: number; dir: "crash" | "rally"; blurb: string }> = {
+  "War breaks out": { shock: -0.10, dir: "crash", blurb: "Risk-off, flight to safety, vol spikes" },
+  "Fed surprise hike +50bps": { shock: -0.04, dir: "crash", blurb: "Multiple compression, growth re-rates" },
+  "Apple earnings blowout": { shock: 0.06, dir: "rally", blurb: "Margin beat, guidance raise" },
+  "Product recall scandal": { shock: -0.07, dir: "crash", blurb: "Brand hit, near-term cash impact" },
+  "AI bubble bursts": { shock: -0.08, dir: "crash", blurb: "Tech selloff, rotation to value" },
+  "Massive buyback announcement": { shock: 0.05, dir: "rally", blurb: "EPS accretion, signaling" },
+};
+
+// Each agent's tactical style for live scenario reaction (from Streamlit)
+const AGENT_PERSONALITY: Record<string, string> = {
+  super_influencer_001: "contrarian",
+  pod_pm_001: "risk_cut",
+  activist_short_001: "short_focused",
+  cta_forced_001: "momentum",
+  retail_fomo_001: "panic_fomo",
+  permabull_001: "buy_dip",
+  day_trader_001: "momentum",
+};
+
+function reactToScenario(
+  personality: string,
+  dir: "crash" | "rally",
+  privLean: string,
+  conviction: number
+): { label: string; color: string; reason: string } {
+  const c = conviction || 0.5;
+  if (personality === "momentum") {
+    return dir === "crash"
+      ? { label: "Sell", color: "var(--loss)", reason: "follow downside momentum" }
+      : { label: "Buy", color: "var(--gain)", reason: "follow upside momentum" };
+  }
+  if (personality === "contrarian") {
+    return dir === "crash"
+      ? { label: `Buy ${Math.round(Math.min(0.75, 0.30 + 0.4 * c) * 100)}%`, color: "var(--gain)", reason: "buy the dip" }
+      : { label: "Trim", color: "var(--loss)", reason: "fade the rally" };
+  }
+  if (personality === "panic_fomo") {
+    return dir === "crash"
+      ? { label: "Sell all", color: "var(--loss)", reason: "panic out" }
+      : { label: "Buy max", color: "var(--gain)", reason: "FOMO into rally" };
+  }
+  if (personality === "buy_dip") {
+    return { label: `Buy ${Math.round(Math.min(0.75, 0.30 + 0.4 * c) * 100)}%`, color: "var(--gain)", reason: dir === "crash" ? "buy dip" : "buy breakout" };
+  }
+  if (personality === "short_focused") {
+    return dir === "crash"
+      ? { label: "Add short", color: "var(--loss)", reason: "press the short" }
+      : { label: "Cover", color: "var(--muted)", reason: "cover into rally" };
+  }
+  if (personality === "risk_cut") {
+    return dir === "crash"
+      ? { label: privLean === "long" ? "Sell" : "Hold", color: "var(--loss)", reason: "risk-managed trim" }
+      : { label: "Hold", color: "var(--muted)", reason: "stay disciplined" };
+  }
+  return { label: "Hold", color: "var(--muted)", reason: "no edge" };
+}
+
+// ────────────────────────────────────────────────────────────────
 // Top-level helpers
 // ────────────────────────────────────────────────────────────────
 
@@ -253,6 +315,7 @@ export default function PlayPage() {
   const today = useGameStore((s) => s.today);
   const loadDay = useGameStore((s) => s.loadDay);
   const advanceDay = useGameStore((s) => s.advanceDay);
+  const skipDays = useGameStore((s) => s.skipDays);
   const peek = useGameStore((s) => s.peek);
   const reset = useGameStore((s) => s.reset);
   const pendingAction = useGameStore((s) => s.pendingAction);
@@ -265,6 +328,10 @@ export default function PlayPage() {
   const [agentErrors, setAgentErrors] = useState<{ agentId: string; error: string }[]>([]);
   const [range, setRange] = useState<RangeKey>("3M");
   const [overlays, setOverlays] = useState<Overlay[]>(["RSI", "Volume"]);
+  const [todayNews, setTodayNews] = useState<string[]>([]);
+  const [scenarioKey, setScenarioKey] = useState<string>("War breaks out");
+  const [activeScenario, setActiveScenario] = useState<string | null>(null);
+  const [skipN, setSkipN] = useState<number>(3);
 
   useEffect(() => {
     if (!session) router.replace("/");
@@ -297,36 +364,54 @@ export default function PlayPage() {
     const history = allPrices.slice(Math.max(0, histEndIdx - 30), histEndIdx + 1);
     const closes = history.map((b) => b.close);
     const inds = computeIndicators(closes);
-    const market: MarketContext = {
-      ticker: session.ticker,
-      asOfDate: todayBar.date,
-      history,
-      newsHeadlines: [],
-      sma20: inds.sma20 ?? undefined,
-      rsi14: inds.rsi14 ?? undefined,
-      macdHist: inds.macdHist ?? undefined,
-      bbUpper: inds.bbUpper ?? undefined,
-      bbLower: inds.bbLower ?? undefined,
-      mom5d: inds.mom5d ?? undefined,
-    };
-    setAgentStatus(`11 agents thinking… (${todayBar.date})`);
-    fetch("/api/agents/decide", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticker: session.ticker, date: todayBar.date, market, user: session.user }),
-    })
-      .then((r) => r.json())
-      .then(async (d: { decisions: AgentDecision[]; errors?: { agentId: string; error: string }[] }) => {
+
+    // Fetch today's headlines first, then run agents with them in context
+    const newsUrl = `/data/news/${session.ticker}_${todayBar.date}.json`;
+    fetch(newsUrl)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((arr: Array<{ title?: string }>) => {
+        const headlines = (arr || [])
+          .map((n) => (n?.title ?? "").replace(/\s+/g, " ").trim())
+          .filter(Boolean)
+          .slice(0, 6);
+        setTodayNews(headlines);
+        return headlines;
+      })
+      .catch(() => {
+        setTodayNews([]);
+        return [];
+      })
+      .then((headlines: string[]) => {
+        const market: MarketContext = {
+          ticker: session.ticker,
+          asOfDate: todayBar.date,
+          history,
+          newsHeadlines: headlines,
+          sma20: inds.sma20 ?? undefined,
+          rsi14: inds.rsi14 ?? undefined,
+          macdHist: inds.macdHist ?? undefined,
+          bbUpper: inds.bbUpper ?? undefined,
+          bbLower: inds.bbLower ?? undefined,
+          mom5d: inds.mom5d ?? undefined,
+        };
+        setAgentStatus(`11 agents thinking… (${todayBar.date})`);
+        return fetch("/api/agents/decide", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticker: session.ticker, date: todayBar.date, market, user: session.user }),
+        }).then((r) => r.json().then((j) => ({ j, market })));
+      })
+      .then(async ({ j, market }: { j: { decisions: AgentDecision[]; errors?: { agentId: string; error: string }[] }; market: MarketContext }) => {
         const totalCap = ALL_AGENTS.filter((a) => a.hasPortfolio).reduce((s, a) => s + a.capital, 0);
         const aggResp = await fetch("/api/game/aggregate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ decisions: d.decisions, agents: ALL_AGENTS, totalCapital: totalCap }),
+          body: JSON.stringify({ decisions: j.decisions, agents: ALL_AGENTS, totalCapital: totalCap }),
         });
         const agg = (await aggResp.json()) as AggregateResponse;
-        loadDay(todayBar.date, d.decisions, market, agg);
+        loadDay(todayBar.date, j.decisions, market, agg);
         setAgentStatus("");
-        setAgentErrors(d.errors ?? []);
+        setAgentErrors(j.errors ?? []);
       })
       .catch((e) => setAgentStatus(`agents unreachable: ${e}`));
   }, [session, allPrices, today, loadDay]);
@@ -598,6 +683,25 @@ export default function PlayPage() {
             </div>
 
             <div>
+              {/* Today's headlines (fed into agent prompts) */}
+              <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2">
+                Today&apos;s headlines
+              </div>
+              <div className="mb-5">
+                {todayNews.length === 0 ? (
+                  <div className="text-sm text-[var(--faint)] italic py-1">Quiet trading day</div>
+                ) : (
+                  todayNews.slice(0, 4).map((h, i) => (
+                    <div
+                      key={i}
+                      className="text-[0.92rem] text-[#262626] leading-snug py-1.5 border-t border-[var(--bg-soft)] first:border-t-0"
+                    >
+                      {h}
+                    </div>
+                  ))
+                )}
+              </div>
+
               <div className="flex items-baseline justify-between mb-2">
                 <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)]">
                   Voices today · all 11 agents
@@ -634,6 +738,128 @@ export default function PlayPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* ── §2 Power-ups (optional) ────────────────────────────────────── */}
+          <SectionLabel n={2} muted>
+            Power-ups · optional · project a what-if scenario, or skip days
+          </SectionLabel>
+
+          <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-4 mb-2">
+            {/* What-if scenario */}
+            <div className="bg-[var(--bg-soft)] border border-[var(--border)] rounded-lg p-3">
+              <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-semibold mb-2">
+                🌐 What-if scenario · agents react live
+              </div>
+              <div className="flex gap-2 flex-wrap items-stretch">
+                <select
+                  value={scenarioKey}
+                  onChange={(e) => setScenarioKey(e.target.value)}
+                  className="flex-1 min-w-[200px] px-3 py-2 border border-[var(--border)] rounded-md text-sm bg-white focus:border-[var(--ink)] outline-none"
+                >
+                  {Object.keys(SCENARIOS).map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setActiveScenario(scenarioKey)}
+                  className="px-4 py-2 bg-[var(--ink)] text-white rounded-md text-sm font-semibold hover:opacity-90"
+                >
+                  Project
+                </button>
+                {activeScenario && (
+                  <button
+                    onClick={() => setActiveScenario(null)}
+                    className="px-4 py-2 border border-[var(--border)] rounded-md text-sm font-semibold hover:border-[var(--ink)]"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {activeScenario && (() => {
+                const scen = SCENARIOS[activeScenario];
+                const accent = scen.dir === "crash" ? "#ea580c" : "#0891b2";
+                const bg = scen.dir === "crash" ? "#fff7ed" : "#ecfeff";
+                return (
+                  <div
+                    className="mt-3 rounded-md p-3 border-l-[3px]"
+                    style={{ background: bg, borderColor: accent, borderTopColor: accent, borderRightColor: accent, borderBottomColor: accent }}
+                  >
+                    <div className="flex items-baseline justify-between mb-1">
+                      <div className="text-[0.78rem] font-bold uppercase tracking-wider" style={{ color: accent }}>
+                        🌐 If {activeScenario}
+                      </div>
+                      <div className="text-[0.75rem] text-[var(--muted)]">
+                        shock {scen.shock >= 0 ? "+" : ""}{(scen.shock * 100).toFixed(0)}%
+                      </div>
+                    </div>
+                    <div className="text-[0.8rem] text-[var(--muted)] mb-2">{scen.blurb}</div>
+                    {rankedDecisions.length > 0 && (
+                      <div className="text-xs">
+                        {rankedDecisions
+                          .filter((d) => AGENT_PERSONALITY[d.agentId])
+                          .map((d) => {
+                            const meta = HIVE_AGENTS_BY_ID[d.agentId];
+                            const r = reactToScenario(
+                              AGENT_PERSONALITY[d.agentId],
+                              scen.dir,
+                              d.privateBelief.lean,
+                              d.privateBelief.conviction
+                            );
+                            return (
+                              <div
+                                key={d.agentId}
+                                className="flex items-baseline gap-2 py-1 border-t border-[#f1f5f9]"
+                              >
+                                <span className="font-semibold min-w-[120px]">{meta?.name ?? d.agentId}</span>
+                                <span className="text-[var(--faint)] text-[10px]">{meta?.roleLabel ?? ""}</span>
+                                <span className="ml-auto font-semibold" style={{ color: r.color }}>
+                                  → {r.label}
+                                </span>
+                                <span className="text-[var(--muted)] italic text-[11px] min-w-[140px] text-right">
+                                  {r.reason}
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Skip N days */}
+            <div className="bg-[var(--bg-soft)] border border-[var(--border)] rounded-lg p-3">
+              <div className="text-[0.72rem] uppercase tracking-wider text-[var(--muted)] font-semibold mb-2">
+                ⏩ Skip days · no trade
+              </div>
+              <div className="flex gap-2">
+                <select
+                  value={skipN}
+                  onChange={(e) => setSkipN(Number(e.target.value))}
+                  className="flex-1 px-3 py-2 border border-[var(--border)] rounded-md text-sm bg-white focus:border-[var(--ink)] outline-none"
+                >
+                  {[3, 5, 10].map((n) => (
+                    <option key={n} value={n}>
+                      {n} days
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => skipDays(skipN)}
+                  className="px-4 py-2 bg-[var(--ink)] text-white rounded-md text-sm font-semibold hover:opacity-90"
+                >
+                  Skip
+                </button>
+              </div>
+              <div className="text-[10px] text-[var(--muted)] mt-2">
+                Holds your current position. No trade is executed.
+              </div>
             </div>
           </div>
 
