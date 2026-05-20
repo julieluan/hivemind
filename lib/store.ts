@@ -51,6 +51,8 @@ interface GameStore {
     fillPrice: number;
     realCloseToday: number;
   }) => void;
+  // Power-up: skip N trading days without trading. Bumps day index by n.
+  skipDays: (n: number) => void;
   reset: () => void;
 }
 
@@ -204,6 +206,22 @@ export const useGameStore = create<GameStore>()(
           pendingAction: "hold",
           pendingAmountUsd: 0,
           today: null, // force reload for next day
+        });
+      },
+
+      skipDays: (n) => {
+        const session = get().session;
+        if (!session) return;
+        const nextIdx = Math.min(session.totalDays, session.currentDayIdx + n);
+        set({
+          session: {
+            ...session,
+            currentDayIdx: nextIdx,
+            isComplete: nextIdx >= session.totalDays,
+          },
+          today: null,
+          pendingAction: "hold",
+          pendingAmountUsd: 0,
         });
       },
 
