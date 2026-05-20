@@ -138,6 +138,15 @@ export interface DaySummary {
   netPressure: number;
 }
 
+// Per-agent portfolio tracked across the session
+export interface AgentPortfolio {
+  agentId: string;
+  cash: number;
+  shares: number;
+  costBasis: number;
+  initialCapital: number;
+}
+
 export interface GameSession {
   sessionId: string; // uuid
   ticker: string;
@@ -151,6 +160,8 @@ export interface GameSession {
   peeksByDate: Record<string, string[]>; // date → agentIds revealed that day
   // Per-day journey for the end-game recap
   daySummaries: DaySummary[];
+  // Each agent's live book after applying their personal_action each day
+  agentPortfolios: Record<string, AgentPortfolio>;
 }
 
 // ─── API request/response contracts ─────────────────────────────────────────

@@ -692,26 +692,48 @@ export default function PlayPage() {
         const tradeDays = session.trades.filter((t) => t.sharesTraded > 0).length;
         const holdDays = session.trades.length - tradeDays;
 
+        // Per-agent PnL — uses session.agentPortfolios marked at today's open
+        const agentPnl = (aid: string): number => {
+          const p = session.agentPortfolios[aid];
+          if (!p || p.initialCapital <= 0) return 0;
+          const mark = p.cash + p.shares * fill;
+          return ((mark - p.initialCapital) / p.initialCapital) * 100;
+        };
+
         // Standings bar chart data
         const bars = [
-          { name: "You", pnl: pnlPct, color: "#f59e0b", you: true },
-          { name: "Buy & Hold", pnl: bhPnl, color: "#94a3b8", you: false },
+          { name: "You", pnl: pnlPct, color: "#f59e0b", you: true, isBH: false },
+          { name: "Buy & Hold", pnl: bhPnl, color: "#94a3b8", you: false, isBH: true },
           ...ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => ({
             name: HIVE_AGENTS_BY_ID[a.id]?.name ?? a.name,
-            pnl: 0,
+            pnl: agentPnl(a.id),
             color: "#cbd5e1",
             you: false,
+            isBH: false,
           })),
         ].sort((a, b) => b.pnl - a.pnl);
         const maxAbsPnl = Math.max(0.1, ...bars.map((b) => Math.abs(b.pnl)));
         const userRank = bars.findIndex((b) => b.you) + 1;
-        const agentsBeaten = bars.filter((b) => !b.you && b.name !== "Buy & Hold" && b.pnl < pnlPct).length;
-        const totalAgents = bars.filter((b) => !b.you && b.name !== "Buy & Hold").length;
-        const headline = userRank <= 3
-          ? "🏆 You crushed it."
-          : userRank <= totalAgents / 2 + 1
-            ? "👏 Solid run."
-            : "📉 Tough market.";
+        const agentsBeaten = bars.filter((b) => !b.you && !b.isBH && b.pnl < pnlPct).length;
+        const totalAgents = bars.filter((b) => !b.you && !b.isBH).length;
+        const beatBH = pnlPct > bhPnl;
+        const headline =
+          userRank === 1
+            ? "🏆 You won the hive."
+            : beatBH && userRank <= totalAgents / 2 + 1
+              ? "👏 You beat Buy & Hold and most of the hive."
+              : beatBH
+                ? "✅ Beat Buy & Hold."
+                : userRank <= totalAgents / 2 + 1
+                  ? "👏 Solid run — beat half the hive."
+                  : "📉 Tough market — Buy & Hold and most agents beat you.";
+
+        // Days played vs skipped
+        const daysPlayed = sums.length;
+        const daysSkipped = session.currentDayIdx - daysPlayed;
+
+        // Best/worst day — exclude pure-hold days where shares_traded == 0
+        const activeTrades = session.trades.filter((t) => t.sharesTraded > 0);
 
         const mostDeceptive = agentsList[0];
         const fmtAction = (a: string) =>
@@ -722,7 +744,9 @@ export default function PlayPage() {
             {/* Headline */}
             <div className="text-center mb-6">
               <div className="text-[0.78rem] uppercase tracking-[0.1em] text-[var(--muted)] font-bold mb-2">
-                🏁 Final results · {sums.length} / {total} days
+                🏁 Final results · played {daysPlayed} day{daysPlayed === 1 ? "" : "s"}
+                {daysSkipped > 0 && ` · skipped ${daysSkipped}`}
+                {` of ${total}`}
               </div>
               <div className="text-2xl font-semibold mb-2">{headline}</div>
               <div
@@ -847,11 +871,19 @@ export default function PlayPage() {
                     {peekDays > 0 && <span className="text-[var(--muted)]"> (avg {(totalPeeks / peekDays).toFixed(1)} / peek day)</span>}
                   </div>
                   <div>Traded on <strong>{tradeDays}</strong> days · held on <strong>{holdDays}</strong> days</div>
-                  {session.trades.length > 0 && (
+                  {activeTrades.length > 0 ? (
                     <div>
-                      Best day {Math.max(...session.trades.map((t) => t.dayReturnPct)).toFixed(2)}% ·{" "}
-                      Worst day {Math.min(...session.trades.map((t) => t.dayReturnPct)).toFixed(2)}%
+                      Best trade day{" "}
+                      <span style={{ color: "var(--gain)" }} className="font-semibold">
+                        {Math.max(...activeTrades.map((t) => t.dayReturnPct)).toFixed(2)}%
+                      </span>{" "}
+                      · Worst{" "}
+                      <span style={{ color: "var(--loss)" }} className="font-semibold">
+                        {Math.min(...activeTrades.map((t) => t.dayReturnPct)).toFixed(2)}%
+                      </span>
                     </div>
+                  ) : (
+                    <div className="text-[var(--muted)] italic">No trades made — pure hold session.</div>
                   )}
                 </div>
               </div>
@@ -1381,13 +1413,19 @@ export default function PlayPage() {
               <span className="text-right">P&amp;L</span>
             </div>
             {(() => {
+              const liveAgentPnl = (aid: string): number => {
+                const p = session.agentPortfolios?.[aid];
+                if (!p || p.initialCapital <= 0) return 0;
+                const mark = p.cash + p.shares * fill;
+                return ((mark - p.initialCapital) / p.initialCapital) * 100;
+              };
               const rows = [
                 { name: "You", role: "the twelfth trader", pnl: pnlPct, you: true },
                 { name: "Buy & Hold", role: "passive index", pnl: bhPnl, you: false },
                 ...ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => ({
                   name: HIVE_AGENTS_BY_ID[a.id]?.name ?? a.name,
                   role: HIVE_AGENTS_BY_ID[a.id]?.roleLabel ?? a.role,
-                  pnl: 0,
+                  pnl: liveAgentPnl(a.id),
                   you: false,
                 })),
               ].sort((a, b) => b.pnl - a.pnl);

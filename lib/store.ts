@@ -16,7 +16,9 @@ import type {
   ActionType,
   ForecastEntry,
   AggregateResponse,
+  AgentPortfolio,
 } from "./types";
+import { ALL_AGENTS } from "./agents";
 
 interface DayPayload {
   date: string;
@@ -68,6 +70,45 @@ function updateCostBasis(
   return (oldShares * oldBasis + buyShares * fillPrice) / newShares;
 }
 
+// ─── Apply an agent's action_type to their book at fill price ─────────────
+// Mirrors the user's trade logic but driven by the agent's own personal_action.
+function applyAgentAction(
+  port: AgentPortfolio,
+  action: ActionType,
+  sizePct: number,
+  fillPrice: number
+): AgentPortfolio {
+  if (fillPrice <= 0) return port;
+  // Map action → desired notional change
+  const sz = Math.max(0, Math.min(1, sizePct || 0));
+  let cash = port.cash;
+  let shares = port.shares;
+  let basis = port.costBasis;
+
+  if (action === "buy_strong" || action === "buy_lite") {
+    // buy_strong uses size_pct of cash but min 0.7; buy_lite uses given size_pct
+    const useFrac = action === "buy_strong" ? Math.max(0.7, sz) : sz || 0.3;
+    const cashToUse = Math.max(0, cash * useFrac);
+    const buyShares = Math.floor(cashToUse / fillPrice);
+    if (buyShares > 0) {
+      const cost = buyShares * fillPrice;
+      basis = updateCostBasis(shares, basis, buyShares, fillPrice);
+      cash -= cost;
+      shares += buyShares;
+    }
+  } else if (action === "sell_strong" || action === "sell_lite") {
+    const useFrac = action === "sell_strong" ? 1.0 : sz || 0.3;
+    const sellShares = Math.floor(shares * useFrac);
+    if (sellShares > 0) {
+      cash += sellShares * fillPrice;
+      shares -= sellShares;
+      if (shares === 0) basis = 0;
+    }
+  }
+  // hold → no change
+  return { ...port, cash, shares, costBasis: basis };
+}
+
 // ─── Store ──────────────────────────────────────────────────────────────────
 export const useGameStore = create<GameStore>()(
   persist(
@@ -96,6 +137,18 @@ export const useGameStore = create<GameStore>()(
           trades: [],
           peeksByDate: {},
           daySummaries: [],
+          agentPortfolios: Object.fromEntries(
+            ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => [
+              a.id,
+              {
+                agentId: a.id,
+                cash: a.capital,
+                shares: 0,
+                costBasis: 0,
+                initialCapital: a.capital,
+              } as AgentPortfolio,
+            ])
+          ),
         };
         set({ session, today: null, error: null });
       },
@@ -208,6 +261,19 @@ export const useGameStore = create<GameStore>()(
           })),
         };
 
+        // Apply each agent's personal_action to their own book at today's open
+        const nextAgentPortfolios: typeof session.agentPortfolios = { ...session.agentPortfolios };
+        for (const d of today.decisions) {
+          const port = nextAgentPortfolios[d.agentId];
+          if (!port) continue;
+          nextAgentPortfolios[d.agentId] = applyAgentAction(
+            port,
+            d.personalAction.actionType,
+            d.personalAction.sizePct,
+            fillPrice
+          );
+        }
+
         set({
           session: {
             ...session,
@@ -221,6 +287,7 @@ export const useGameStore = create<GameStore>()(
             },
             trades: [...session.trades, trade],
             daySummaries: [...session.daySummaries, summary],
+            agentPortfolios: nextAgentPortfolios,
           },
           pendingAction: "hold",
           pendingAmountUsd: 0,
