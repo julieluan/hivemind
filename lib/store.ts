@@ -95,6 +95,7 @@ export const useGameStore = create<GameStore>()(
           },
           trades: [],
           peeksByDate: {},
+          daySummaries: [],
         };
         set({ session, today: null, error: null });
       },
@@ -190,6 +191,23 @@ export const useGameStore = create<GameStore>()(
         const nextIdx = session.currentDayIdx + 1;
         const isComplete = nextIdx >= session.totalDays;
 
+        // Capture a slim per-day summary for the end-game recap
+        const summary = {
+          date: today.date,
+          netPressure: today.aggregate.netPressure ?? 0,
+          agents: today.decisions.map((d) => ({
+            agentId: d.agentId,
+            publicLean: d.publicStatement.statedLean,
+            publicConv: d.publicStatement.statedConviction,
+            privateLean: d.privateBelief.lean,
+            privateConv: d.privateBelief.conviction,
+            action: d.personalAction.actionType,
+            deception:
+              d.publicStatement.statedLean !== d.privateBelief.lean &&
+              d.privateBelief.lean !== "neutral",
+          })),
+        };
+
         set({
           session: {
             ...session,
@@ -202,6 +220,7 @@ export const useGameStore = create<GameStore>()(
               costBasis: newBasis,
             },
             trades: [...session.trades, trade],
+            daySummaries: [...session.daySummaries, summary],
           },
           pendingAction: "hold",
           pendingAmountUsd: 0,
