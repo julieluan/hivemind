@@ -262,6 +262,7 @@ export default function PlayPage() {
   const [allPrices, setAllPrices] = useState<PriceBar[] | null>(null);
   const [pricesError, setPricesError] = useState<string | null>(null);
   const [agentStatus, setAgentStatus] = useState<string>("");
+  const [agentErrors, setAgentErrors] = useState<{ agentId: string; error: string }[]>([]);
   const [range, setRange] = useState<RangeKey>("3M");
   const [overlays, setOverlays] = useState<Overlay[]>(["RSI", "Volume"]);
 
@@ -315,7 +316,7 @@ export default function PlayPage() {
       body: JSON.stringify({ ticker: session.ticker, date: todayBar.date, market, user: session.user }),
     })
       .then((r) => r.json())
-      .then(async (d: { decisions: AgentDecision[] }) => {
+      .then(async (d: { decisions: AgentDecision[]; errors?: { agentId: string; error: string }[] }) => {
         const totalCap = ALL_AGENTS.filter((a) => a.hasPortfolio).reduce((s, a) => s + a.capital, 0);
         const aggResp = await fetch("/api/game/aggregate", {
           method: "POST",
@@ -325,6 +326,7 @@ export default function PlayPage() {
         const agg = (await aggResp.json()) as AggregateResponse;
         loadDay(todayBar.date, d.decisions, market, agg);
         setAgentStatus("");
+        setAgentErrors(d.errors ?? []);
       })
       .catch((e) => setAgentStatus(`agents unreachable: ${e}`));
   }, [session, allPrices, today, loadDay]);
@@ -596,8 +598,24 @@ export default function PlayPage() {
             </div>
 
             <div>
-              <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)] mb-2">
-                Voices today · all 11 agents
+              <div className="flex items-baseline justify-between mb-2">
+                <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)]">
+                  Voices today · all 11 agents
+                </div>
+                {agentErrors.length > 0 && (
+                  <details className="text-[10px] text-[var(--loss)]">
+                    <summary className="cursor-pointer">
+                      ⚠ {agentErrors.length} LLM fallback{agentErrors.length === 1 ? "" : "s"}
+                    </summary>
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded max-w-xs max-h-32 overflow-y-auto font-mono leading-tight">
+                      {agentErrors.map((e) => (
+                        <div key={e.agentId} className="mb-1">
+                          <strong>{e.agentId}:</strong> {e.error.slice(0, 80)}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
               {rankedDecisions.length === 0 ? (
                 <div className="text-sm text-[var(--muted)] py-8 text-center italic">

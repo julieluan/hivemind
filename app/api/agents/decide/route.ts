@@ -25,6 +25,57 @@ import {
   parseAgentDecision,
 } from "@/lib/prompts";
 
+// ─── Per-agent canned fallback when the LLM call fails ─────────────────────
+// Same shape as Mock provider, so the UI always renders all 11 voices.
+function fallbackDecision(args: {
+  agentId: string;
+  date: string;
+  agentName: string;
+  agentRole: string;
+  noteSuffix?: string;
+}): AgentDecision {
+  const { agentId, date, agentName, agentRole, noteSuffix = "" } = args;
+  // Personality hints from agent name
+  const hints: Record<string, { lean: "long" | "short" | "neutral"; conv: number }> = {
+    Catherine: { lean: "long", conv: 0.78 },
+    David: { lean: "neutral", conv: 0.45 },
+    Sarah: { lean: "short", conv: 0.82 },
+    Michael: { lean: "long", conv: 0.55 },
+    Alex: { lean: "long", conv: 0.65 },
+    Thomas: { lean: "long", conv: 0.70 },
+    Devon: { lean: "neutral", conv: 0.40 },
+    Ben: { lean: "neutral", conv: 0.50 },
+    Paul: { lean: "short", conv: 0.60 },
+    Stan: { lean: "neutral", conv: 0.55 },
+  };
+  let pick: { lean: "long" | "short" | "neutral"; conv: number } = { lean: "neutral", conv: 0.5 };
+  for (const [k, v] of Object.entries(hints)) {
+    if (agentName.includes(k)) {
+      pick = v;
+      break;
+    }
+  }
+  const actionType =
+    pick.lean === "long" ? "buy_lite" : pick.lean === "short" ? "sell_lite" : "hold";
+  const narrative = `${agentRole} read · stance ${pick.lean} (${Math.round(pick.conv * 100)}% conviction).${noteSuffix}`;
+  return {
+    agentId,
+    date,
+    privateBelief: {
+      lean: pick.lean,
+      conviction: pick.conv,
+      actualThesis: `${agentRole} fallback thesis (LLM unavailable)`,
+    },
+    publicStatement: {
+      statedLean: pick.lean,
+      statedConviction: Math.round(pick.conv * 0.85 * 100) / 100,
+      narrative,
+    },
+    desiredMarketReaction: "n/a",
+    personalAction: { actionType, sizePct: 0.3, rationale: "fallback heuristic" },
+  };
+}
+
 export const runtime = "nodejs"; // need full fetch + longer timeout than Edge
 export const maxDuration = 60; // Vercel Pro: 60s; Free: 10s (may time out for slow LLM)
 
@@ -83,19 +134,32 @@ export async function POST(req: NextRequest) {
   const agentIds = body.agentIds ?? ALL_AGENTS.map((a) => a.id);
   const provider = getProvider();
 
-  const tasks = agentIds.map(async (aid): Promise<AgentDecision | { error: string; agentId: string }> => {
+  const tasks = agentIds.map(async (aid): Promise<{ decision: AgentDecision; error?: string }> => {
     const agent = getAgent(aid);
-    if (!agent) return { agentId: aid, error: "unknown agent" };
+    if (!agent) {
+      return {
+        decision: fallbackDecision({
+          agentId: aid,
+          date: body.date,
+          agentName: aid,
+          agentRole: "unknown",
+          noteSuffix: " [unknown agent]",
+        }),
+        error: "unknown agent",
+      };
+    }
 
     // CTA is deterministic
     if (agent.role === "cta_forced") {
       const lastClose = body.market.history.at(-1)?.close ?? 0;
-      return ctaDecision({
-        agentId: aid,
-        date: body.date,
-        sma20: body.market.sma20,
-        currentClose: lastClose,
-      });
+      return {
+        decision: ctaDecision({
+          agentId: aid,
+          date: body.date,
+          sma20: body.market.sma20,
+          currentClose: lastClose,
+        }),
+      };
     }
 
     try {
@@ -113,18 +177,34 @@ export async function POST(req: NextRequest) {
         jsonMode: true,
         maxTokens: 600,
         temperature: 0.7,
+        timeoutMs: 8_000,
       });
 
-      const decision = parseAgentDecision(llmResp.text, aid, body.date);
-      if (!decision) {
+      const parsed = parseAgentDecision(llmResp.text, aid, body.date);
+      if (!parsed) {
         return {
-          agentId: aid,
+          decision: fallbackDecision({
+            agentId: aid,
+            date: body.date,
+            agentName: agent.name,
+            agentRole: agent.role,
+            noteSuffix: " [LLM JSON parse failed]",
+          }),
           error: `failed to parse JSON: ${llmResp.text.slice(0, 200)}`,
         };
       }
-      return decision;
+      return { decision: parsed };
     } catch (e: unknown) {
-      return { agentId: aid, error: e instanceof Error ? e.message : String(e) };
+      return {
+        decision: fallbackDecision({
+          agentId: aid,
+          date: body.date,
+          agentName: agent.name,
+          agentRole: agent.role,
+          noteSuffix: " [LLM unavailable]",
+        }),
+        error: e instanceof Error ? e.message : String(e),
+      };
     }
   });
 
@@ -132,20 +212,27 @@ export async function POST(req: NextRequest) {
 
   const decisions: AgentDecision[] = [];
   const errors: { agentId: string; error: string }[] = [];
-  let costUsd = 0;
+  const costUsd = 0;
 
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
     if (r.status === "rejected") {
+      // Even on a hard reject, render a fallback for that agent so all 11 appear
+      const agent = getAgent(agentIds[i]);
+      decisions.push(
+        fallbackDecision({
+          agentId: agentIds[i],
+          date: body.date,
+          agentName: agent?.name ?? agentIds[i],
+          agentRole: agent?.role ?? "unknown",
+          noteSuffix: " [task rejected]",
+        })
+      );
       errors.push({ agentId: agentIds[i], error: String(r.reason).slice(0, 200) });
       continue;
     }
-    const value = r.value;
-    if ("error" in value) {
-      errors.push(value);
-    } else {
-      decisions.push(value);
-    }
+    decisions.push(r.value.decision);
+    if (r.value.error) errors.push({ agentId: agentIds[i], error: r.value.error });
   }
 
   const resp: DecideResponse = {
