@@ -3,6 +3,136 @@
 // Add a new provider by implementing `LLMProvider` + registering in `getProvider`.
 // ============================================================================
 
+// Node 23's built-in fetch (undici) was failing with ECONNRESET on this
+// machine's proxy hop, while curl/python sockets worked fine. Routing
+// every LLM call through node:https — with keep-alive and bounded
+// concurrency — sidesteps undici and stops the parallel TLS handshake
+// storm from blowing connections.
+//
+// Server-only — guarded so client bundles don't try to import `https`.
+type HttpResult = { status: number; bodyText: string };
+
+// One shared keep-alive agent so the 11 parallel agent calls reuse a
+// small pool of TLS sessions instead of triggering 11 simultaneous
+// handshakes (which the proxy was resetting).
+let httpsAgent: import("node:https").Agent | null = null;
+async function getAgent(): Promise<import("node:https").Agent> {
+  if (httpsAgent) return httpsAgent;
+  const https = await import("node:https");
+  httpsAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 3,
+    keepAliveMsecs: 60_000,
+  });
+  return httpsAgent;
+}
+
+// Semaphore — only N concurrent in-flight HTTPS requests. 3 hits the
+// sweet spot on the uyilink proxy: more drops connections, fewer wastes
+// time. Adjust if a different proxy is more/less tolerant.
+const MAX_INFLIGHT = 3;
+let inflight = 0;
+const queue: Array<() => void> = [];
+function acquire(): Promise<void> {
+  return new Promise((resolve) => {
+    if (inflight < MAX_INFLIGHT) {
+      inflight += 1;
+      resolve();
+    } else {
+      queue.push(() => {
+        inflight += 1;
+        resolve();
+      });
+    }
+  });
+}
+function release() {
+  inflight -= 1;
+  const next = queue.shift();
+  if (next) next();
+}
+
+async function doRequest(
+  urlStr: string,
+  headers: Record<string, string>,
+  body: string,
+  timeoutMs: number,
+): Promise<HttpResult> {
+  const https = await import("node:https");
+  const agent = await getAgent();
+  const u = new URL(urlStr);
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        method: "POST",
+        host: u.hostname,
+        port: u.port || 443,
+        path: `${u.pathname}${u.search}`,
+        headers: {
+          ...headers,
+          "Content-Length": Buffer.byteLength(body).toString(),
+          "User-Agent": headers["User-Agent"] ?? "curl/8.5.0",
+        },
+        agent,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c: Buffer) => chunks.push(c));
+        res.on("end", () => {
+          resolve({
+            status: res.statusCode ?? 0,
+            bodyText: Buffer.concat(chunks).toString("utf-8"),
+          });
+        });
+        res.on("error", reject);
+      },
+    );
+    const t = setTimeout(() => {
+      req.destroy(new Error(`request timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    req.on("error", (e) => {
+      clearTimeout(t);
+      reject(e);
+    });
+    req.on("close", () => clearTimeout(t));
+    req.write(body);
+    req.end();
+  });
+}
+
+async function nodeHttpsPost(
+  urlStr: string,
+  headers: Record<string, string>,
+  body: string,
+  timeoutMs: number,
+): Promise<HttpResult> {
+  if (typeof window !== "undefined") {
+    throw new Error("nodeHttpsPost is server-only");
+  }
+  // One retry on TLS handshake failure — the most common transient
+  // error here. Backoff with jitter so we don't immediately re-collide.
+  const MAX_ATTEMPTS = 2;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    await acquire();
+    try {
+      return await doRequest(urlStr, headers, body, timeoutMs);
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      // Only retry on TLS handshake / connection-reset class errors
+      const retryable =
+        /TLS|ECONNRESET|ECONNREFUSED|socket disconnected|ETIMEDOUT/i.test(msg);
+      if (!retryable || attempt === MAX_ATTEMPTS - 1) break;
+      // 300-800ms jitter before retry
+      await new Promise((r) => setTimeout(r, 300 + Math.random() * 500));
+    } finally {
+      release();
+    }
+  }
+  throw lastErr;
+}
+
 export interface LLMCallOptions {
   maxTokens?: number;
   temperature?: number;
@@ -61,47 +191,45 @@ abstract class OpenAICompatibleProvider implements LLMProvider {
       body.response_format = { type: "json_object" };
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      opts.timeoutMs ?? 60_000
+    const { status, bodyText } = await nodeHttpsPost(
+      `${this.baseUrl}/chat/completions`,
+      {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      JSON.stringify(body),
+      opts.timeoutMs ?? 60_000,
     );
 
+    let data: {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    };
     try {
-      const resp = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-
-      const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(
-          `${this.name} error ${resp.status}: ${JSON.stringify(data).slice(0, 200)}`
-        );
-      }
-
-      const text: string = data.choices?.[0]?.message?.content ?? "";
-      const usage = data.usage ?? {};
-      return {
-        text,
-        inputTokens: usage.prompt_tokens,
-        outputTokens: usage.completion_tokens,
-        costUsd: this.estimateCost(
-          usage.prompt_tokens ?? 0,
-          usage.completion_tokens ?? 0
-        ),
-        latencyMs: Date.now() - start,
-        provider: this.name,
-        model: this.model,
-      };
-    } finally {
-      clearTimeout(timeout);
+      data = JSON.parse(bodyText);
+    } catch {
+      throw new Error(`${this.name}: invalid JSON from ${this.baseUrl}: ${bodyText.slice(0, 200)}`);
     }
+    if (status < 200 || status >= 300) {
+      throw new Error(
+        `${this.name} error ${status}: ${bodyText.slice(0, 200)}`
+      );
+    }
+
+    const text: string = data.choices?.[0]?.message?.content ?? "";
+    const usage = data.usage ?? {};
+    return {
+      text,
+      inputTokens: usage.prompt_tokens,
+      outputTokens: usage.completion_tokens,
+      costUsd: this.estimateCost(
+        usage.prompt_tokens ?? 0,
+        usage.completion_tokens ?? 0
+      ),
+      latencyMs: Date.now() - start,
+      provider: this.name,
+      model: this.model,
+    };
   }
 
   protected abstract estimateCost(inTok: number, outTok: number): number;
@@ -152,44 +280,40 @@ class AnthropicProvider implements LLMProvider {
       messages: [{ role: "user", content: userMessage }],
     };
 
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      opts.timeoutMs ?? 60_000
+    const { status, bodyText } = await nodeHttpsPost(
+      `${this.baseUrl}/messages`,
+      {
+        "x-api-key": this.apiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      JSON.stringify(body),
+      opts.timeoutMs ?? 60_000,
     );
-
+    let data: {
+      content?: Array<{ type: string; text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+    };
     try {
-      const resp = await fetch(`${this.baseUrl}/messages`, {
-        method: "POST",
-        headers: {
-          "x-api-key": this.apiKey,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(
-          `anthropic error ${resp.status}: ${JSON.stringify(data).slice(0, 200)}`
-        );
-      }
-      const text: string =
-        data.content?.find((c: { type: string }) => c.type === "text")?.text ?? "";
-      const usage = data.usage ?? {};
-      return {
-        text,
-        inputTokens: usage.input_tokens,
-        outputTokens: usage.output_tokens,
-        costUsd: (usage.input_tokens / 1e6) * 0.8 + (usage.output_tokens / 1e6) * 4,
-        latencyMs: Date.now() - start,
-        provider: this.name,
-        model: this.model,
-      };
-    } finally {
-      clearTimeout(timeout);
+      data = JSON.parse(bodyText);
+    } catch {
+      throw new Error(`anthropic: invalid JSON: ${bodyText.slice(0, 200)}`);
     }
+    if (status < 200 || status >= 300) {
+      throw new Error(`anthropic error ${status}: ${bodyText.slice(0, 200)}`);
+    }
+    const text: string =
+      data.content?.find((c) => c.type === "text")?.text ?? "";
+    const usage = data.usage ?? {};
+    return {
+      text,
+      inputTokens: usage.input_tokens,
+      outputTokens: usage.output_tokens,
+      costUsd: ((usage.input_tokens ?? 0) / 1e6) * 0.8 + ((usage.output_tokens ?? 0) / 1e6) * 4,
+      latencyMs: Date.now() - start,
+      provider: this.name,
+      model: this.model,
+    };
   }
 }
 
