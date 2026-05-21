@@ -12,6 +12,8 @@
 // ============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
 import type {
   DecideRequest,
   DecideResponse,
@@ -24,6 +26,58 @@ import {
   buildUserMessage,
   parseAgentDecision,
 } from "@/lib/prompts";
+
+// ─── Disk cache for canonical runs ─────────────────────────────────────────
+// Read-through with write-on-miss. In dev the cache populates on first play;
+// committing `public/data/cached-decisions/` ships those entries to prod.
+// Prod lambda filesystem is read-only — writes silently fail, reads still work.
+
+const SAFE = /^[A-Z0-9._-]+$/i;
+
+function cachePath(ticker: string, date: string): string | null {
+  if (!SAFE.test(ticker) || !SAFE.test(date)) return null;
+  return path.join(
+    process.cwd(),
+    "public",
+    "data",
+    "cached-decisions",
+    ticker,
+    `${date}.json`,
+  );
+}
+
+async function readCache(
+  ticker: string,
+  date: string,
+): Promise<AgentDecision[] | null> {
+  const p = cachePath(ticker, date);
+  if (!p) return null;
+  try {
+    const raw = await fs.readFile(p, "utf-8");
+    const parsed = JSON.parse(raw) as { decisions?: AgentDecision[] };
+    if (!Array.isArray(parsed?.decisions) || parsed.decisions.length === 0) {
+      return null;
+    }
+    return parsed.decisions;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(
+  ticker: string,
+  date: string,
+  decisions: AgentDecision[],
+): Promise<void> {
+  const p = cachePath(ticker, date);
+  if (!p) return;
+  try {
+    await fs.mkdir(path.dirname(p), { recursive: true });
+    await fs.writeFile(p, JSON.stringify({ decisions }, null, 2));
+  } catch {
+    // Read-only filesystem in prod — silently no-op
+  }
+}
 
 // ─── Per-agent canned fallback when the LLM call fails ─────────────────────
 // Same shape as Mock provider, so the UI always renders all 11 voices.
@@ -129,6 +183,28 @@ export async function POST(req: NextRequest) {
       { error: "ticker, date, market are required" },
       { status: 400 }
     );
+  }
+
+  // Cache lookup: only the canonical case (full 11-agent first round) is
+  // cacheable. Multi-round / agent-subset / what-if calls bypass the cache
+  // because their outputs depend on caller state.
+  const url = new URL(req.url);
+  const skipCache = url.searchParams.get("cache") === "skip";
+  const isCacheable =
+    !skipCache &&
+    (body.round ?? 1) === 1 &&
+    !body.priorDecisions &&
+    !body.agentIds;
+  if (isCacheable) {
+    const cached = await readCache(body.ticker, body.date);
+    if (cached) {
+      const resp: DecideResponse = {
+        decisions: cached,
+        costUsd: 0,
+        latencyMs: Date.now() - start,
+      };
+      return NextResponse.json(resp);
+    }
   }
 
   const agentIds = body.agentIds ?? ALL_AGENTS.map((a) => a.id);
@@ -237,6 +313,12 @@ export async function POST(req: NextRequest) {
     }
     decisions.push(r.value.decision);
     if (r.value.error) errors.push({ agentId: agentIds[i], error: r.value.error });
+  }
+
+  // Write-through cache: persist successful canonical runs so the next
+  // player gets them for free. No-op in prod (read-only fs).
+  if (isCacheable && errors.length === 0 && decisions.length > 0) {
+    await writeCache(body.ticker, body.date, decisions);
   }
 
   const resp: DecideResponse = {

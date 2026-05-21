@@ -86,6 +86,27 @@ hivemind/
 
 ---
 
+## Cost control · canonical run cache
+
+`/api/agents/decide` reads through a per-day cache at
+`public/data/cached-decisions/<TICKER>/<DATE>.json`. The default 32-day
+AAPL run is cacheable; what-if scenarios and multi-round calls bypass
+the cache automatically.
+
+Populate the cache once locally, then commit it so every player on
+production plays for free:
+
+```bash
+bun run dev                      # in one terminal, with a real LLM key
+bun run generate-cache --start=2026-03-30 --days=32
+git add public/data/cached-decisions
+git commit -m "Cache canonical AAPL 32-day run"
+```
+
+The script costs roughly $3-4 in Claude Haiku for one 32-day run. Pass
+`?cache=skip` on a single API call to force a live regeneration of one
+day.
+
 ## Deploy
 
 ```bash
