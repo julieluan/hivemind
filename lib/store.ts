@@ -48,6 +48,7 @@ interface GameStore {
   loadDay: (date: string, decisions: AgentDecision[], market: MarketContext, aggregate: AggregateResponse) => void;
   setPending: (action: ActionType, amount?: number) => void;
   peek: (agentId: string) => void;
+  toggleAccusation: (agentId: string) => void;
   // The "Next Day" commit. UI calls this AFTER fetching next day's data.
   advanceDay: (commitArgs: {
     fillPrice: number;
@@ -139,6 +140,7 @@ export const useGameStore = create<GameStore>()(
           },
           trades: [],
           peeksByDate: {},
+          accusationsByDate: {},
           daySummaries: [],
           agentPortfolios: Object.fromEntries(
             ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => [
@@ -184,6 +186,26 @@ export const useGameStore = create<GameStore>()(
             peeksByDate: {
               ...session.peeksByDate,
               [dateKey]: [...revealed, agentId],
+            },
+          },
+        });
+      },
+
+      toggleAccusation: (agentId) => {
+        const session = get().session;
+        const today = get().today;
+        if (!session || !today) return;
+        const dateKey = today.date;
+        const current = session.accusationsByDate[dateKey] ?? [];
+        const next = current.includes(agentId)
+          ? current.filter((id) => id !== agentId)
+          : [...current, agentId];
+        set({
+          session: {
+            ...session,
+            accusationsByDate: {
+              ...session.accusationsByDate,
+              [dateKey]: next,
             },
           },
         });
@@ -343,6 +365,12 @@ export const useGameStore = create<GameStore>()(
       storage: createJSONStorage(() => localStorage),
       // Only persist session (the slow-changing user state), not today's loaded data
       partialize: (state) => ({ session: state.session }),
+      onRehydrateStorage: () => (state) => {
+        // Backfill fields added after a session was started so old saves don't crash.
+        if (state?.session && !state.session.accusationsByDate) {
+          state.session.accusationsByDate = {};
+        }
+      },
     }
   )
 );

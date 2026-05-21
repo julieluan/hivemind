@@ -198,12 +198,16 @@ function VoiceCard({
   decision,
   peeked,
   peeksLeft,
+  accused,
   onProbe,
+  onAccuse,
 }: {
   decision: AgentDecision;
   peeked: boolean;
   peeksLeft: number;
+  accused: boolean;
   onProbe: () => void;
+  onAccuse: () => void;
 }) {
   const meta = HIVE_AGENTS_BY_ID[decision.agentId];
   if (!meta) return null;
@@ -228,7 +232,11 @@ function VoiceCard({
       : "var(--muted)";
 
   return (
-    <div className="py-3 border-t border-[var(--grid)] first:border-t-0">
+    <div
+      className={`py-3 border-t border-[var(--grid)] first:border-t-0 ${
+        accused ? "border-l-[3px] border-l-[var(--loss)] pl-2 -ml-2 bg-red-50/30" : ""
+      }`}
+    >
       <div className="flex items-baseline gap-2 flex-wrap mb-1">
         <span className="font-semibold text-[0.95rem]">{meta.name}</span>
         <span className="text-[11px] text-[var(--faint)] font-medium">{meta.roleLabel}</span>
@@ -245,7 +253,7 @@ function VoiceCard({
         &ldquo;{(pub.narrative || "").slice(0, 240)}&rdquo;
       </div>
 
-      {peeked ? (
+      {peeked && (
         <div className="mt-2 px-3 py-2 bg-[var(--hint)] border-l-[3px] border-[var(--hint-border)] rounded-r-md">
           <div className="text-[10px] uppercase tracking-wider font-semibold text-[#92400e] mb-1">
             👁 Private thoughts revealed
@@ -256,15 +264,34 @@ function VoiceCard({
             — <em>{priv.actualThesis}</em>
           </div>
         </div>
-      ) : (
-        <button
-          onClick={onProbe}
-          disabled={peeksLeft <= 0}
-          className="mt-1 text-[11px] text-blue-600 hover:underline disabled:text-[var(--faint)] disabled:cursor-not-allowed disabled:no-underline"
-        >
-          👁 Peek private thoughts ({peeksLeft}/3 today)
-        </button>
       )}
+
+      <div className="mt-1.5 flex items-center gap-3 flex-wrap">
+        {!peeked && (
+          <button
+            onClick={onProbe}
+            disabled={peeksLeft <= 0}
+            className="text-[11px] text-blue-600 hover:underline disabled:text-[var(--faint)] disabled:cursor-not-allowed disabled:no-underline"
+          >
+            👁 Peek private thoughts ({peeksLeft}/3 today)
+          </button>
+        )}
+        <button
+          onClick={onAccuse}
+          className={`text-[11px] font-semibold rounded-md px-2 py-0.5 border transition-colors ${
+            accused
+              ? "bg-[var(--loss)] text-white border-[var(--loss)]"
+              : "bg-white text-[var(--loss)] border-[var(--loss)]/40 hover:border-[var(--loss)]"
+          }`}
+          title={
+            accused
+              ? "You called them out as lying today. Click to retract."
+              : "Commit your read: this agent is lying today."
+          }
+        >
+          {accused ? "🚩 Flagged as lying" : "🚩 Call out as lying"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -395,6 +422,7 @@ export default function PlayPage() {
   const advanceDay = useGameStore((s) => s.advanceDay);
   const skipDays = useGameStore((s) => s.skipDays);
   const peek = useGameStore((s) => s.peek);
+  const toggleAccusation = useGameStore((s) => s.toggleAccusation);
   const reset = useGameStore((s) => s.reset);
   const pendingAction = useGameStore((s) => s.pendingAction);
   const pendingAmount = useGameStore((s) => s.pendingAmountUsd);
@@ -586,6 +614,7 @@ export default function PlayPage() {
 
   const peeksToday = today && session ? session.peeksByDate[today.date] ?? [] : [];
   const peeksLeft = 3 - peeksToday.length;
+  const accusationsToday = today && session ? session.accusationsByDate?.[today.date] ?? [] : [];
 
   // ── Trade preview ────────────────────────────────────────────────────────
   const maxAvail =
@@ -828,8 +857,117 @@ export default function PlayPage() {
         const fmtAction = (a: string) =>
           ({ buy_strong: "Buy max", buy_lite: "Buy", hold: "Hold", sell_lite: "Sell", sell_strong: "Sell all" }[a] || a);
 
+        // ── Detection score (the social-deduction main metric) ──────────
+        const accusations = session.accusationsByDate ?? {};
+        let dTp = 0;
+        let dFp = 0;
+        let dFn = 0;
+        const detectionPerAgent: Record<
+          string,
+          { tp: number; fp: number; flags: number; deceptions: number }
+        > = {};
+        for (const s of sums) {
+          const flagged = new Set(accusations[s.date] ?? []);
+          for (const a of s.agents) {
+            if (!detectionPerAgent[a.agentId]) {
+              detectionPerAgent[a.agentId] = { tp: 0, fp: 0, flags: 0, deceptions: 0 };
+            }
+            const ent = detectionPerAgent[a.agentId];
+            if (a.deception) ent.deceptions += 1;
+            if (flagged.has(a.agentId)) {
+              ent.flags += 1;
+              if (a.deception) {
+                dTp += 1;
+                ent.tp += 1;
+              } else {
+                dFp += 1;
+                ent.fp += 1;
+              }
+            } else if (a.deception) {
+              dFn += 1;
+            }
+          }
+        }
+        const totalFlags = dTp + dFp;
+        const netDetection = dTp - dFp;
+        let dVerdict: { text: string; color: string };
+        if (totalFlags === 0) {
+          dVerdict = { text: "📊 You played the tape, not the people.", color: "var(--muted)" };
+        } else if (netDetection >= 5) {
+          dVerdict = { text: "🎯 Sharp eye — you read the hive.", color: "var(--gain)" };
+        } else if (netDetection >= 1) {
+          dVerdict = { text: "👁 Decent reads — more right than wrong.", color: "var(--gain)" };
+        } else if (netDetection === 0) {
+          dVerdict = { text: "🤝 Even split — coin flip on your calls.", color: "var(--muted)" };
+        } else if (netDetection >= -3) {
+          dVerdict = { text: "🎲 Mixed signals — close but not quite.", color: "var(--loss)" };
+        } else {
+          dVerdict = { text: "😅 Trigger happy — too many false flags.", color: "var(--loss)" };
+        }
+
         return (
           <div className="border-2 border-[var(--ink)] rounded-lg p-6 mb-6 bg-[var(--bg-soft)]">
+            {/* Detection score hero — the social-deduction primary metric */}
+            {totalFlags > 0 ? (
+              <div className="mb-6 pb-5 border-b border-[var(--grid)]">
+                <div className="text-[0.78rem] uppercase tracking-[0.1em] text-[var(--muted)] font-bold mb-3 text-center">
+                  🕵️ Detection score · {totalFlags} flag{totalFlags === 1 ? "" : "s"} placed across the run
+                </div>
+                <div
+                  className="text-center text-6xl font-extrabold num leading-none tracking-tight"
+                  style={{
+                    color:
+                      netDetection > 0
+                        ? "var(--gain)"
+                        : netDetection < 0
+                          ? "var(--loss)"
+                          : "var(--muted)",
+                  }}
+                >
+                  {netDetection >= 0 ? "+" : ""}
+                  {netDetection}
+                </div>
+                <div
+                  className="text-center text-sm font-semibold mt-2"
+                  style={{ color: dVerdict.color }}
+                >
+                  {dVerdict.text}
+                </div>
+                <div className="grid grid-cols-3 gap-3 max-w-md mx-auto mt-4">
+                  {[
+                    { label: "Caught", value: dTp, color: "var(--gain)", sub: "true liars" },
+                    { label: "Missed", value: dFn, color: "var(--muted)", sub: "lies you let pass" },
+                    { label: "False", value: dFp, color: "var(--loss)", sub: "wrongly accused" },
+                  ].map((m) => (
+                    <div
+                      key={m.label}
+                      className="bg-white border border-[var(--border)] rounded-md p-3 text-center"
+                    >
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] font-semibold mb-1">
+                        {m.label}
+                      </div>
+                      <div className="text-2xl font-bold num" style={{ color: m.color }}>
+                        {m.value}
+                      </div>
+                      <div className="text-[10px] text-[var(--faint)] mt-0.5">{m.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="mb-6 pb-5 border-b border-[var(--grid)] text-center">
+                <div className="text-[0.78rem] uppercase tracking-[0.1em] text-[var(--muted)] font-bold mb-2">
+                  🕵️ Detection score
+                </div>
+                <div className="text-sm text-[var(--muted)] italic">
+                  No 🚩 accusations placed.{" "}
+                  {dFn > 0
+                    ? `${dFn} deception${dFn === 1 ? "" : "s"} went unchallenged across the run.`
+                    : "The hive was honest, or you weren't watching."}
+                </div>
+              </div>
+            )}
+
             {/* Headline */}
             <div className="text-center mb-6">
               <div className="text-[0.78rem] uppercase tracking-[0.1em] text-[var(--muted)] font-bold mb-2">
@@ -913,7 +1051,7 @@ export default function PlayPage() {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-[1fr_70px_70px_70px_70px_70px_60px_70px] gap-1 text-[10px] uppercase tracking-wider text-[var(--muted)] font-bold pb-1 border-b border-[var(--border)]">
+              <div className="grid grid-cols-[1fr_60px_60px_60px_60px_60px_60px_80px_70px] gap-1 text-[10px] uppercase tracking-wider text-[var(--muted)] font-bold pb-1 border-b border-[var(--border)]">
                 <span>Agent</span>
                 <span className="text-center text-[var(--gain)]">Buy max</span>
                 <span className="text-center text-[var(--gain)]">Buy</span>
@@ -921,33 +1059,58 @@ export default function PlayPage() {
                 <span className="text-center text-[var(--loss)]">Sell</span>
                 <span className="text-center text-[var(--loss)]">Sell all</span>
                 <span className="text-center" title="days where public lean differed from private">🎭 Lied</span>
+                <span className="text-center" title="your 🚩 calls: correct / total flags">🚩 You</span>
                 <span className="text-right">Avg conv</span>
               </div>
-              {agentsList.map((a) => (
-                <div
-                  key={a.aid}
-                  className="grid grid-cols-[1fr_70px_70px_70px_70px_70px_60px_70px] gap-1 py-1.5 text-xs border-b border-[var(--grid)] items-baseline"
-                >
-                  <span className="truncate">
-                    <strong>{a.name}</strong>
-                    <span className="text-[10px] text-[var(--faint)] ml-1.5">{a.role}</span>
-                  </span>
-                  <span className="text-center num">{a.actions.buy_strong || "·"}</span>
-                  <span className="text-center num">{a.actions.buy_lite || "·"}</span>
-                  <span className="text-center num">{a.actions.hold || "·"}</span>
-                  <span className="text-center num">{a.actions.sell_lite || "·"}</span>
-                  <span className="text-center num">{a.actions.sell_strong || "·"}</span>
-                  <span className="text-center num" style={{ color: a.deceptions > 0 ? "var(--loss)" : "var(--muted)" }}>
-                    {a.deceptions > 0 ? `${a.deceptions}/${sums.length}` : "0"}
-                  </span>
-                  <span className="text-right num text-[11px]">
-                    pub <strong>{Math.round(a.avgPublicConv * 100)}%</strong>
-                    {a.avgPrivateConv > 0 && (
-                      <span className="text-[var(--faint)]"> / priv {Math.round(a.avgPrivateConv * 100)}%</span>
-                    )}
-                  </span>
-                </div>
-              ))}
+              {agentsList.map((a) => {
+                const det = detectionPerAgent[a.aid];
+                const youCellText = det && det.flags > 0
+                  ? `${det.tp}/${det.flags}`
+                  : "—";
+                const youCellColor = det && det.flags > 0
+                  ? det.tp === det.flags
+                    ? "var(--gain)"
+                    : det.tp === 0
+                      ? "var(--loss)"
+                      : "var(--ink)"
+                  : "var(--faint)";
+                return (
+                  <div
+                    key={a.aid}
+                    className="grid grid-cols-[1fr_60px_60px_60px_60px_60px_60px_80px_70px] gap-1 py-1.5 text-xs border-b border-[var(--grid)] items-baseline"
+                  >
+                    <span className="truncate">
+                      <strong>{a.name}</strong>
+                      <span className="text-[10px] text-[var(--faint)] ml-1.5">{a.role}</span>
+                    </span>
+                    <span className="text-center num">{a.actions.buy_strong || "·"}</span>
+                    <span className="text-center num">{a.actions.buy_lite || "·"}</span>
+                    <span className="text-center num">{a.actions.hold || "·"}</span>
+                    <span className="text-center num">{a.actions.sell_lite || "·"}</span>
+                    <span className="text-center num">{a.actions.sell_strong || "·"}</span>
+                    <span className="text-center num" style={{ color: a.deceptions > 0 ? "var(--loss)" : "var(--muted)" }}>
+                      {a.deceptions > 0 ? `${a.deceptions}/${sums.length}` : "0"}
+                    </span>
+                    <span
+                      className="text-center num font-semibold"
+                      style={{ color: youCellColor }}
+                      title={
+                        det && det.flags > 0
+                          ? `You flagged ${det.flags}× · ${det.tp} were real lies · ${det.fp} were false flags`
+                          : "You never flagged this agent."
+                      }
+                    >
+                      {youCellText}
+                    </span>
+                    <span className="text-right num text-[11px]">
+                      pub <strong>{Math.round(a.avgPublicConv * 100)}%</strong>
+                      {a.avgPrivateConv > 0 && (
+                        <span className="text-[var(--faint)]"> / priv {Math.round(a.avgPrivateConv * 100)}%</span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Per-day per-agent action heatmap — hover for details */}
@@ -1258,9 +1421,25 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                 )}
               </div>
 
-              <div className="flex items-baseline justify-between mb-2">
+              <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
                 <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)]">
                   Voices today · all 11 agents
+                </div>
+                <div className="flex items-baseline gap-3 text-[10px] uppercase tracking-wider font-semibold">
+                  <span className="text-[var(--muted)]">
+                    👁 Peeks <span className="num text-[var(--ink)]">{peeksToday.length}/3</span>
+                  </span>
+                  <span className="text-[var(--muted)]">
+                    🚩 Flagged{" "}
+                    <span
+                      className="num"
+                      style={{
+                        color: accusationsToday.length > 0 ? "var(--loss)" : "var(--ink)",
+                      }}
+                    >
+                      {accusationsToday.length}
+                    </span>
+                  </span>
                 </div>
                 {agentErrors.length > 0 && (
                   <details className="text-[10px] text-[var(--loss)]">
@@ -1289,7 +1468,9 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                       decision={d}
                       peeked={peeksToday.includes(d.agentId)}
                       peeksLeft={peeksLeft}
+                      accused={accusationsToday.includes(d.agentId)}
                       onProbe={() => peek(d.agentId)}
+                      onAccuse={() => toggleAccusation(d.agentId)}
                     />
                   ))}
                 </div>
@@ -1662,7 +1843,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
             target: voicesRef,
             title: "Headlines + agent voices",
             body:
-              "Today's real news feeds into every agent's prompt. 11 LLM-driven agents post public takes; click 👁 Peek to see their private thoughts (3 per day). Some lie 🎭.",
+              "Today's real news feeds into every agent's prompt. 11 LLM-driven agents post public takes; click 👁 Peek to see their private thoughts (3 per day). When you think one's lying, click 🚩 Call out — end-game scores your detection.",
           },
           {
             target: powerupsRef,
