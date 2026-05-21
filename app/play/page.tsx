@@ -260,9 +260,18 @@ function VoiceCard({
       </div>
 
       {peeked && (
-        <div className="mt-2 px-3 py-2 bg-[var(--hint)] border-l-[3px] border-[var(--hint-border)] rounded-r-md">
-          <div className="text-[10px] uppercase tracking-wider font-semibold text-[#92400e] mb-1">
-            👁 Private thoughts revealed
+        <div
+          className="mt-2 px-3 py-2 rounded-r-md"
+          style={{
+            background: deception ? "#fff1f2" : "var(--hint)",
+            borderLeft: deception ? "3px solid var(--loss)" : "3px solid var(--hint-border)",
+          }}
+        >
+          <div
+            className="text-[10px] uppercase tracking-wider font-semibold mb-1"
+            style={{ color: deception ? "var(--loss)" : "#92400e" }}
+          >
+            {deception ? "🎭 CAUGHT LYING — private truth revealed" : "👁 Private thoughts revealed"}
           </div>
           <div className="text-[0.85rem] text-[var(--ink)] leading-snug">
             <strong style={{ color: leanColor(priv.lean) }}>{priv.lean}</strong>{" "}
@@ -296,6 +305,174 @@ function VoiceCard({
           }
         >
           {accused ? "🚩 Flagged as lying" : "🚩 Call out as lying"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
+// Day Reveal Modal — the "Among Us voting" moment
+// Shows after player commits a day: caught liars, missed liars, false flags
+// ────────────────────────────────────────────────────────────────
+
+type DayResult = {
+  date: string;
+  dayNum: number;
+  accusations: string[];
+  decisions: AgentDecision[];
+  tp: number;
+  fp: number;
+  fn: number;
+  isLastDay: boolean;
+};
+
+function DayResultModal({ result, onClose }: { result: DayResult; onClose: () => void }) {
+  const accused = new Set(result.accusations);
+  const lying = (d: AgentDecision) =>
+    isDeception(
+      d.publicStatement.statedLean,
+      d.publicStatement.statedConviction,
+      d.privateBelief.lean,
+      d.privateBelief.conviction,
+    );
+  const liars = result.decisions.filter(lying);
+  const caught = liars.filter((d) => accused.has(d.agentId));
+  const missed = liars.filter((d) => !accused.has(d.agentId));
+  const falseFlagged = result.decisions.filter((d) => accused.has(d.agentId) && !lying(d));
+
+  const score = result.tp - result.fp;
+
+  let headline = "";
+  let headlineColor = "var(--ink)";
+  if (result.accusations.length === 0 && liars.length === 0) {
+    headline = "😇 Clean day — nobody was lying";
+  } else if (result.accusations.length === 0) {
+    headline = `😶 You didn't flag anyone — ${liars.length} liar${liars.length > 1 ? "s" : ""} slipped through`;
+    headlineColor = "var(--muted)";
+  } else if (score > 0 && result.fp === 0) {
+    headline = score >= 3 ? "🔥 Perfect — every flag landed!" : "🎯 Good reads today";
+    headlineColor = "var(--gain)";
+  } else if (score > 0) {
+    headline = "👁 More right than wrong";
+    headlineColor = "var(--gain)";
+  } else if (score === 0 && result.tp > 0) {
+    headline = "🤝 Even split — some hits, some misses";
+  } else if (result.fp > 0 && result.tp === 0) {
+    headline = "😅 All false flags — none of your targets were lying";
+    headlineColor = "var(--loss)";
+  } else {
+    headline = "📊 No flags placed";
+    headlineColor = "var(--muted)";
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center px-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="text-center mb-4">
+          <div className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted)] font-bold mb-1">
+            Day {result.dayNum} · {result.date} · Reveal
+          </div>
+          <div className="text-lg font-bold leading-snug" style={{ color: headlineColor }}>
+            {headline}
+          </div>
+          {result.accusations.length > 0 && (
+            <div
+              className="text-3xl font-extrabold num mt-1 leading-none"
+              style={{ color: score > 0 ? "var(--gain)" : score < 0 ? "var(--loss)" : "var(--muted)" }}
+            >
+              {score >= 0 ? "+" : ""}{score} detection
+            </div>
+          )}
+        </div>
+
+        {/* Results */}
+        <div className="space-y-3 mb-4">
+          {caught.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider font-bold mb-1.5" style={{ color: "var(--gain)" }}>
+                ✅ Caught ({caught.length})
+              </div>
+              {caught.map((d) => {
+                const meta = HIVE_AGENTS_BY_ID[d.agentId];
+                return (
+                  <div key={d.agentId} className="flex items-center gap-2 py-1 border-t border-[var(--bg-soft)] first:border-t-0">
+                    <AgentAvatar agentId={d.agentId} size={26} />
+                    <span className="text-sm font-semibold flex-1">{meta?.name}</span>
+                    <span className="text-[11px] text-[var(--muted)]">
+                      said{" "}
+                      <strong style={{ color: d.publicStatement.statedLean === "long" ? "var(--gain)" : d.publicStatement.statedLean === "short" ? "var(--loss)" : "var(--muted)" }}>
+                        {d.publicStatement.statedLean}
+                      </strong>
+                      {" → secretly "}
+                      <strong style={{ color: d.privateBelief.lean === "long" ? "var(--gain)" : d.privateBelief.lean === "short" ? "var(--loss)" : "var(--muted)" }}>
+                        {d.privateBelief.lean}
+                      </strong>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {missed.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider font-bold mb-1.5 text-[var(--muted)]">
+                😶 Missed ({missed.length})
+              </div>
+              {missed.map((d) => {
+                const meta = HIVE_AGENTS_BY_ID[d.agentId];
+                return (
+                  <div key={d.agentId} className="flex items-center gap-2 py-1 border-t border-[var(--bg-soft)] first:border-t-0">
+                    <AgentAvatar agentId={d.agentId} size={26} />
+                    <span className="text-sm font-semibold flex-1">{meta?.name}</span>
+                    <span className="text-[11px] text-[var(--muted)]">
+                      was lying (
+                      <strong style={{ color: d.privateBelief.lean === "long" ? "var(--gain)" : d.privateBelief.lean === "short" ? "var(--loss)" : "var(--muted)" }}>
+                        {d.privateBelief.lean}
+                      </strong>
+                      {" privately"})
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {falseFlagged.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider font-bold mb-1.5" style={{ color: "var(--loss)" }}>
+                ❌ False flag ({falseFlagged.length})
+              </div>
+              {falseFlagged.map((d) => {
+                const meta = HIVE_AGENTS_BY_ID[d.agentId];
+                return (
+                  <div key={d.agentId} className="flex items-center gap-2 py-1 border-t border-[var(--bg-soft)] first:border-t-0">
+                    <AgentAvatar agentId={d.agentId} size={26} />
+                    <span className="text-sm font-semibold flex-1">{meta?.name}</span>
+                    <span className="text-[11px] text-[var(--muted)]">was actually honest</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {liars.length === 0 && result.accusations.length === 0 && (
+            <div className="text-sm text-[var(--muted)] italic text-center py-2">
+              All 10 agents told the truth today.
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full bg-[var(--ink)] text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity text-sm"
+        >
+          {result.isLastDay ? "See final results →" : "Next day →"}
         </button>
       </div>
     </div>
@@ -450,6 +627,7 @@ export default function PlayPage() {
   >([]);
   const [llmReactLoading, setLlmReactLoading] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [dayResult, setDayResult] = useState<DayResult | null>(null);
 
   // Tutorial spotlight targets
   const chartRef = useRef<HTMLDivElement>(null);
@@ -622,6 +800,37 @@ export default function PlayPage() {
   const peeksLeft = 3 - peeksToday.length;
   const accusationsToday = today && session ? session.accusationsByDate?.[today.date] ?? [] : [];
 
+  // Count how many agents are hiding their true position today (shown as a tension hint)
+  const todayLiarCount = useMemo(() => {
+    if (!today) return null;
+    return today.decisions.filter((d) =>
+      isDeception(
+        d.publicStatement.statedLean,
+        d.publicStatement.statedConviction,
+        d.privateBelief.lean,
+        d.privateBelief.conviction,
+      )
+    ).length;
+  }, [today]);
+
+  // Consecutive days where every flag was a correct hit (no false flags), to show streak
+  const detectionStreak = useMemo(() => {
+    if (!session) return 0;
+    const sums = session.daySummaries;
+    const accs = session.accusationsByDate ?? {};
+    let streak = 0;
+    for (let i = sums.length - 1; i >= 0; i--) {
+      const s = sums[i];
+      const flagged = new Set(accs[s.date] ?? []);
+      if (flagged.size === 0) break;
+      const tp = s.agents.filter((a) => a.deception && flagged.has(a.agentId)).length;
+      const fp = s.agents.filter((a) => !a.deception && flagged.has(a.agentId)).length;
+      if (tp > 0 && fp === 0) streak++;
+      else break;
+    }
+    return streak;
+  }, [session]);
+
   // ── Trade preview ────────────────────────────────────────────────────────
   const maxAvail =
     pendingAction === "buy_lite" ? (u?.cash ?? 0) : pendingAction === "sell_lite" ? (u?.shares ?? 0) * fill : 0;
@@ -636,7 +845,32 @@ export default function PlayPage() {
   }, [pendingAction, dayIdx]);
 
   const handleCommit = () => {
-    if (!todayBar) return;
+    if (!todayBar || !today) return;
+    // Capture today's detection results for the reveal modal before advancing
+    const accused = new Set(accusationsToday);
+    let tp = 0, fp = 0, fn = 0;
+    for (const d of today.decisions) {
+      const lying = isDeception(
+        d.publicStatement.statedLean,
+        d.publicStatement.statedConviction,
+        d.privateBelief.lean,
+        d.privateBelief.conviction,
+      );
+      if (accused.has(d.agentId)) {
+        if (lying) tp++; else fp++;
+      } else if (lying) {
+        fn++;
+      }
+    }
+    const isLastDay = dayIdx >= total - 1;
+    setDayResult({
+      date: today.date,
+      dayNum: dayIdx + 1,
+      accusations: [...accusationsToday],
+      decisions: [...today.decisions],
+      tp, fp, fn,
+      isLastDay,
+    });
     advanceDay({ fillPrice: todayBar.open, realCloseToday: todayBar.close });
   };
 
@@ -1499,8 +1733,27 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
               </div>
 
               <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
-                <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)]">
-                  Voices today · all 11 agents
+                <div className="flex items-baseline gap-2">
+                  <div className="text-[0.7rem] uppercase tracking-[0.08em] font-bold text-[var(--muted)]">
+                    Voices today · all 11 agents
+                  </div>
+                  {todayLiarCount !== null && (
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                      style={{
+                        color: todayLiarCount > 0 ? "#92400e" : "var(--muted)",
+                        background: todayLiarCount > 0 ? "#fef3c7" : "var(--bg-soft)",
+                        border: `1px solid ${todayLiarCount > 0 ? "#fcd34d" : "var(--border)"}`,
+                      }}
+                    >
+                      🎭 {todayLiarCount} {todayLiarCount === 1 ? "liar" : "liars"} hiding today
+                    </span>
+                  )}
+                  {detectionStreak >= 2 && (
+                    <span className="text-[10px] font-bold text-amber-600">
+                      🔥 {detectionStreak}-day streak
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-baseline gap-3 text-[10px] uppercase tracking-wider font-semibold">
                   <span className="text-[var(--muted)]">
@@ -1918,6 +2171,11 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
             })()}
           </div>
         </>
+      )}
+
+      {/* Day reveal modal */}
+      {dayResult && !dayResult.isLastDay && (
+        <DayResultModal result={dayResult} onClose={() => setDayResult(null)} />
       )}
 
       {/* Spotlight onboarding tutorial */}
