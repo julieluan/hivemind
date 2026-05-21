@@ -1,7 +1,8 @@
 // Game scenarios — each is a 32-day window carved out of the bundled
 // price data. Different regimes give different agent behavior (panic /
-// FOMO / patience). Only the default scenario has a news cache;
-// others run with empty headlines (agents still work without news).
+// FOMO / patience). Real GDELT headlines are cached for each scenario
+// (coverage varies because GDELT throttles aggressively); missing days
+// fall back to "Quiet trading day" in the UI.
 
 export interface Scenario {
   id: string;
@@ -13,7 +14,9 @@ export interface Scenario {
   // Approximate 32-day Buy & Hold return for the picker preview only.
   // Not authoritative — the actual play uses live OHLCV.
   bhReturnPct: number;
-  hasNewsCache: boolean;
+  // Approximate news coverage (real-headline-days out of 32). UI shows
+  // "Quiet trading day" for any missing day.
+  newsCoverage: number; // 0..32
 }
 
 export const SCENARIOS: Scenario[] = [
@@ -22,10 +25,10 @@ export const SCENARIOS: Scenario[] = [
     ticker: "AAPL",
     startDate: "2026-03-30",
     label: "April 2026 · earnings drift",
-    blurb: "AAPL coming off oversold RSI 28 with earnings 18 days out. Real headlines fed in.",
+    blurb: "AAPL coming off oversold RSI 28 with earnings 18 days out. Full GDELT headline coverage.",
     badge: "bull",
     bhReturnPct: 19.5,
-    hasNewsCache: true,
+    newsCoverage: 28,
   },
   {
     id: "feb-2025",
@@ -35,7 +38,7 @@ export const SCENARIOS: Scenario[] = [
     blurb: "Hot tape going into a sharp -17% drawdown. Macro panic kicks in mid-run.",
     badge: "bear",
     bhReturnPct: -17.0,
-    hasNewsCache: false,
+    newsCoverage: 9,
   },
   {
     id: "apr-2022",
@@ -45,7 +48,7 @@ export const SCENARIOS: Scenario[] = [
     blurb: "Pre-Fed pivot, $174 → $140 over 32 days. Multiple compression in real time.",
     badge: "bear",
     bhReturnPct: -19.3,
-    hasNewsCache: false,
+    newsCoverage: 22,
   },
   {
     id: "jan-2023",
@@ -55,7 +58,7 @@ export const SCENARIOS: Scenario[] = [
     blurb: "The AI narrative ignites. AAPL +14% off the December lows. Permabulls win, shorts squeeze.",
     badge: "bull",
     bhReturnPct: 14.5,
-    hasNewsCache: false,
+    newsCoverage: 20,
   },
   {
     id: "aug-2024",
@@ -65,7 +68,7 @@ export const SCENARIOS: Scenario[] = [
     blurb: "Yen-carry unwind day-one. Volatility spike, hive disagrees sharply over 32 days.",
     badge: "chop",
     bhReturnPct: 10.8,
-    hasNewsCache: false,
+    newsCoverage: 22,
   },
 ];
 

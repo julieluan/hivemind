@@ -131,9 +131,9 @@ export function Welcome({
                   </div>
                   <div className="text-[12px] text-[var(--muted)] leading-snug mt-0.5">
                     {s.blurb}
-                    {!s.hasNewsCache && (
-                      <span className="text-[var(--faint)] ml-1">· no news cache</span>
-                    )}
+                    <span className="text-[var(--faint)] ml-1">
+                      · news {s.newsCoverage}/32 days
+                    </span>
                   </div>
                 </button>
               );

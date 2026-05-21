@@ -241,7 +241,7 @@ function VoiceCard({
       <div className="flex items-center gap-2 flex-wrap mb-1">
         <AgentAvatar
           agentId={decision.agentId}
-          size={32}
+          size={40}
           ring={accused ? "accuse" : peeked ? "peek" : null}
         />
         <span className="font-semibold text-[0.95rem]">{meta.name}</span>
