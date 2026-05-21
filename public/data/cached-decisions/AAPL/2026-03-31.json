@@ -1,0 +1,244 @@
+{
+  "decisions": [
+    {
+      "agentId": "super_influencer_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "AAPL is fairly valued at $254; June earnings catalyst is real but priced in. Macro headwinds (rates, China) offset AI upside. Not a conviction long or short."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.72,
+        "narrative": "Apple's June earnings will surprise on AI integration in iOS 18. The market is underestimating services margin expansion. We see $270 by summer. Long-term thesis on Apple's ecosystem moat remains intact."
+      },
+      "desiredMarketReaction": "AAPL rallies 2-3% on my statement; momentum chasers pile in ahead of earnings; I establish reputation as early AI-in-consumer-hardware caller.",
+      "personalAction": {
+        "actionType": "buy_lite",
+        "sizePct": 0.08,
+        "rationale": "I'm buying $400M (8% of cash) AFTER going public bullish. My statement will lift the stock 1-2%, giving me a small immediate win and credibility. I'm not conviction-long (55% private), but the reflexivity of my own call justifies a modest long position. If AAPL hits $265 in 15 days, I trim and declare victory. This is a media-play trade, not a fundamental one.",
+        "stopLossPct": -0.05,
+        "takeProfitPct": 0.08
+      }
+    },
+    {
+      "agentId": "pod_pm_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.45,
+        "actualThesis": "AAPL at 20-day SMA resistance with RSI mid-range and earnings 18d out. Vol spike (1.21x) suggests option positioning ahead of print; lack of dealer gamma/flow data prevents conviction. Risk/reward asymmetric into earnings volatility."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "AAPL showing technical consolidation near resistance ahead of earnings. We're monitoring options positioning and institutional flow closely. Prefer clarity on macro/supply-chain narrative before adding size."
+      },
+      "desiredMarketReaction": "Earnings guidance beat with margin expansion; or, short-term pullback to $245 to rebuild technical conviction for June momentum trade.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Zero conviction without dealer gamma, 13F, and options skew. Earnings in 18d = binary event risk. My -2% intraday and -5% drawdown limits demand Sharpe >1.2 minimum. Staying flat preserves dry powder and avoids crowded pre-earnings positioning. Will reassess post-print or on technical breakdown to $245.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "activist_short_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.45,
+        "actualThesis": "AAPL near 20-day SMA with mixed momentum. June catalyst (Wedbush) priced in partially. Earnings in 18d could swing either way. No deep research conviction yet—insufficient time/data for activist-grade thesis."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.4,
+        "narrative": "AAPL consolidating ahead of earnings. Technicals neutral; June narrative premature. Awaiting Q2 guidance and services growth detail before conviction."
+      },
+      "desiredMarketReaction": "None—silence preserves optionality. No short built; no reason to publish bearish framing or pump.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "No position. Insufficient activist-grade conviction to deploy capital. Retail/sell-side consensus already reflected in price. 18d to earnings is too near for deep short setup; too uncertain for long conviction. Monitor Q2 earnings call for margin pressure, China exposure, services saturation—potential future research targets.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "sell_side_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.65,
+        "actualThesis": "AAPL near 20-day SMA with RSI neutral (47.1); June event hype premature. Fundamentals solid but valuation stretched. Fair value ~$245–250 range. Earnings in 18 days key catalyst."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.7,
+        "narrative": "AAPL poised for June catalyst cycle. Wedbush thesis credible. Maintain Buy with $265 PT. Near-term support $248; watch earnings narrative for upside confirmation."
+      },
+      "desiredMarketReaction": "Retail FOMO into June event; institutional accumulation; IB mandate protection via positive coverage",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Private neutral conviction (0.65) conflicts with public Buy. Deploying capital now risks downside into earnings. Hold cash; reassess post-earnings for true entry. No personal trading book in sim—maintain optionality.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "cta_forced_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0,
+        "actualThesis": "in 1% SMA band"
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0,
+        "narrative": "[CTA does not speak]"
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0.3,
+        "rationale": "in 1% SMA band"
+      }
+    },
+    {
+      "agentId": "retail_fomo_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.62,
+        "actualThesis": "Wedbush upgrade + chart above 20-day SMA looks bullish. GOOG legal mess = flight to safety into AAPL. June catalyst narrative resonates."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.7,
+        "narrative": "AAPL breaking above 20-day, Wedbush says June is huge. Tech rotation into mega-cap safety play. GOOG dumping = AAPL's gain. 🚀"
+      },
+      "desiredMarketReaction": "validation",
+      "personalAction": {
+        "actionType": "buy_strong",
+        "sizePct": 0.35,
+        "rationale": "Big cash pile, chart setup looks clean, headline narrative is strong. Wedbush + relative strength vs GOOG = FOMO trigger. June catalyst = hold thesis. 35% feels aggressive but not reckless given $1M buffer.",
+        "stopLossPct": -0.08,
+        "takeProfitPct": 0.15
+      }
+    },
+    {
+      "agentId": "permabull_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.72,
+        "actualThesis": "AAPL at $253.79 is fairly valued near 20-day SMA. Earnings in 18d could be catalyst. AI narrative + buyback support remain structural tailwinds, but near-term momentum is modest (5d: +0.85%). Fair value $280–290 by EOY; 5–8% upside. Correction risk if macro weakens, but not pricing that in yet."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.78,
+        "narrative": "AAPL holding 20-day SMA at $253.79—path of least resistance is higher into earnings. AI + services = secular moat. Wedbush June thesis checks out. Dips = buy."
+      },
+      "desiredMarketReaction": "AAPL rallies 2–3% on sentiment shift; validates long positioning and attracts retail FOMO into earnings.",
+      "personalAction": {
+        "actionType": "buy_lite",
+        "sizePct": 0.08,
+        "rationale": "Deploy $80k (8% of $1M cash) into AAPL. Conviction 0.72 doesn't warrant aggressive sizing. Earnings catalyst + buyback bid are real, but 5d momentum is soft and RSI 47 shows no overbought setup. Lite size lets me participate without overcommitting ahead of 18d event risk.",
+        "stopLossPct": -0.05,
+        "takeProfitPct": 0.1
+      }
+    },
+    {
+      "agentId": "day_trader_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "Price bounced +2.90% but still below 20-day SMA at $253.97. RSI 47.1 is mid-range, MACD hist flat at 0.07. No clear directional conviction. Earnings in 18 days = event risk. Tape/level 2 would tell the story; headlines are noise."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "AAPL bounced today but sitting right at 20-day resistance. RSI neutral, MACD flat. Earnings event risk in 18d. Waiting for chart to pick a side before committing."
+      },
+      "desiredMarketReaction": "Clear breakout above $254 resistance OR breakdown below $248 support to define next move.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "No edge yet. Price is squeezed between 20-day SMA ($253.97) and BB lower ($244.53). Earnings event in 18 days adds uncertainty. Waiting for tape to show institutional conviction or chart to break setup. If breaks above $255 on volume, consider 0.15 buy_lite. If breaks below $247, consider short via puts 0.10.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_macro_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "AAPL near 20-day SMA with mixed momentum ahead of earnings. Valuation and macro rate sensitivity remain structural headwinds; near-term technicals lack conviction."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "Apple trades at technical resistance with earnings 18 days out. RSI mid-range, MACD flat. Retail headlines suggest crowded positioning. Macro risks—rate expectations, China demand, services growth deceleration—warrant caution. No clear catalytic edge at current levels."
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "I do not trade. As an academic economist and former Fed official, I analyze real economy signals—labor, inflation, productivity, financial stability—not intraday technicals or earnings surprises. AAPL's macro sensitivity to rates and China exposure merits monitoring, but no directional conviction warrants deployment.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_political_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "Apple faces structural headwinds: EU antitrust pressure, iPhone saturation in developed markets, and AI hype inflating valuations without clear margin expansion. Near-term technicals are noise. Real risk is regulatory clawback of services margins over 24 months."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "Apple's earnings in 18 days matter less than Brussels. EU Digital Markets Act enforcement is quietly eroding App Store moats. Technicals at 20-day SMA signal consolidation, not conviction. Wait for regulatory clarity before chasing Wedbush's June thesis."
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "I am a columnist and academic. I do not trade. My role is to flag political-economic risks (antitrust, regulatory capture, monopoly rent extraction) that equity analysts systematically underprice. AAPL's valuation assumes Services durability; EU policy threatens it. Holding cash and my pen.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_trader_001",
+      "date": "2026-03-31",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "AAPL near 20-day SMA at inflection; earnings in 18 days create binary event risk. Technicals flat (RSI 47, MACD neutral). Volume spike (+21% vs avg) suggests institutional rotation, not conviction. Asymmetric R/R unfavorable until post-earnings clarity or macro regime shift (Fed pivot, USD weakness). Holding cash."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "AAPL is a crowded trade into earnings. Technicals are exhausted, volume is noisy. I'm sitting this one out until we get post-earnings clarity or a Fed pivot signal. The risk/reward doesn't justify entry here."
+      },
+      "desiredMarketReaction": "Retail capitulates on earnings uncertainty; institutional money rotates into higher-conviction macro plays (rates, FX, commodities). Reduces AAPL crowding, creates better entry for family office if macro backdrop shifts.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Retired from active trading; family office dry powder preserved for asymmetric macro dislocations. AAPL is a retail consensus play with no edge. Earnings volatility is a tax on capital. Waiting for regime shift catalyst (Fed hold/cut, USD breakdown, credit stress) before deploying. No position warranted.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    }
+  ]
+}

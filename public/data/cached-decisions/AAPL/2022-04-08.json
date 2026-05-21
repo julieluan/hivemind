@@ -1,0 +1,244 @@
+{
+  "decisions": [
+    {
+      "agentId": "super_influencer_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "short",
+        "conviction": 0.72,
+        "actualThesis": "AAPL is a defensive mega-cap in a rising-rate regime. Earnings in 18d will face margin pressure; multiple compression from 28x to 24x is likely as Fed tightens. My thematic fund is AI/robotics/genomics—AAPL is old-economy hardware."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "Apple remains a quality franchise, but we're rotating capital toward higher-growth disruptive themes. Macro headwinds suggest a pause before earnings. Long-term thesis intact; near-term, we're underweight mega-cap hardware."
+      },
+      "desiredMarketReaction": "Modest 1-2% selloff in AAPL as my neutrality signals rotation away. Helps justify my subsequent short positioning without triggering 'Cathie dumping AAPL' headlines that would crater my credibility on growth names.",
+      "personalAction": {
+        "actionType": "sell_strong",
+        "sizePct": 0.18,
+        "rationale": "I have zero AAPL currently, but I'm establishing a short position via put spreads (not naked shorts—reputational risk). 18% of my cash ($173.6M notional) gives me ~$1.02B synthetic short exposure at current price. I'm selling the narrative of 'rotation' publicly while building downside hedge. Earnings miss + multiple compression in 18 days is my thesis. This move is disguised as thematic reallocation, not a AAPL bear call that would invite pushback from my institutional LPs.",
+        "stopLossPct": 0.08,
+        "takeProfitPct": -0.12
+      }
+    },
+    {
+      "agentId": "pod_pm_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.45,
+        "actualThesis": "AAPL down 2.4% in 5d on macro headwinds; RSI 52 + MACD divergence suggest no directional edge. Earnings in 18d creates binary risk. Positioning light until post-earnings clarity."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "AAPL consolidating post-selloff. Technicals neutral, RSI mid-range. Earnings catalyst in 18 days warrants patience. No alpha in current setup; waiting for post-earnings repricing."
+      },
+      "desiredMarketReaction": "Earnings beat + guidance raise; de-risks macro concerns and re-rates multiple upward. Alternatively, 2-3% dip into $165–$167 would create better entry.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Zero position. Risk/reward unfavorable pre-earnings. 18d to catalyst = event risk dominates technicals. Cash drag acceptable vs. 1 Sharpe drawdown risk. Redeploy post-earnings when vol compresses and edge clarifies.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "activist_short_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.45,
+        "actualThesis": "AAPL down 4.6% in 5 days on macro headwinds (rates, inflation). Technicals soft (RSI 52, MACD negative, below 20-SMA resistance). Earnings in 18d create vol. No structural red flag yet—valuation reasonable for growth. Waiting for catalyst or deeper thesis before conviction."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "AAPL pullback on macro. Chart weak near-term (RSI 52, MACD hist neg). Earnings 18d away—likely volatility. No position yet; watching setup."
+      },
+      "desiredMarketReaction": "None. Neutral stance invites no panic or FOMO. Allows silent observation.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Cash-heavy, no short conviction. AAPL is mega-cap, liquid, but macro headwinds + earnings vol = wait for clearer setup. If I had 6-month deep research showing supply-chain fraud or margin deterioration, I'd short hard. Today: insufficient thesis. Silence is power—lets others panic into my entry if I build case.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "sell_side_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.65,
+        "actualThesis": "AAPL near 20-day SMA support; 5-day momentum negative but RSI mid-range suggests no extreme. Earnings in 18d creates binary event risk. Fair value ~$165–175 range; current $170 offers limited margin of safety."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.7,
+        "narrative": "AAPL maintains technical support near 20-day SMA. Pre-earnings pullback offers entry for long-term holders. Services growth and installed base resilience support $180 PT."
+      },
+      "desiredMarketReaction": "Stabilization near $170; accumulation ahead of earnings; positive post-earnings reversion.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Private view neutral; public long protects banking relationships. No personal position deployed—earnings binary event and conviction gap warrant sidelines. Will reassess post-earnings print.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "cta_forced_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0,
+        "actualThesis": "in 1% SMA band"
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0,
+        "narrative": "[CTA does not speak]"
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0.3,
+        "rationale": "in 1% SMA band"
+      }
+    },
+    {
+      "agentId": "retail_fomo_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.4,
+        "actualThesis": "Price dropped 1.19% today, still above 20-day SMA. No strong catalyst visible. Waiting for clearer signal before committing."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "AAPL holding above 20-day but momentum is weak. Not seeing the rip yet. Watching for reversal or confirmation of dip before I move."
+      },
+      "desiredMarketReaction": "validation",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Too much cash, but no FOMO signal yet. No Cathie tweet, no WSB hype, no activist report. Chart is meh. Staying on sidelines for now.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "permabull_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.72,
+        "actualThesis": "AAPL correcting within secular uptrend. AI/cloud secular tailwinds intact. Valuation reasonable on 5yr DCF. Near 20-SMA support ($169.60) is tactical entry. Earnings in 18d could reignite. 5-10% dip = opportunity, not signal to panic."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.78,
+        "narrative": "AAPL testing 20-day MA—classic accumulation zone. Mega-cap moat unshaken. Path of least resistance remains higher into earnings. Weakness = gift."
+      },
+      "desiredMarketReaction": "AAPL stabilizes and rallies back to $175–180 range over next 2 weeks, validating contrarian entry and narrative.",
+      "personalAction": {
+        "actionType": "buy_lite",
+        "sizePct": 0.18,
+        "rationale": "Down ~4.7% from 5-day high; near 20-SMA support. Earnings catalyst 18d out. Conviction 72% = measured entry, not all-in. Sizing 18% of cash (~$174k) keeps dry powder for further dips or other opportunities. Stop at -6% from entry ($159.88) protects vs. macro shock.",
+        "stopLossPct": -0.06,
+        "takeProfitPct": 0.12
+      }
+    },
+    {
+      "agentId": "day_trader_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "Price rejected 20-SMA support at $169.60, MACD turning negative, RSI mid-range. No clear chart setup yet—waiting for either breakdown below $168 or reversal confirmation above $172."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "AAPL stuck in indecision. -2.4% momentum on 5d, MACD rolling over. Watching $168 support—break that and I'm looking short. No entry until tape shows conviction."
+      },
+      "desiredMarketReaction": "Tape shows institutional selling or reversal candle off support; chart clarifies direction.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "No setup triggered. Price is above 20-SMA ($169.60) but momentum is fading and MACD histogram negative. Earnings in 18 days = volatility risk. Waiting for either clean breakdown (short setup via puts) or reversal + tape confirmation (long). Stop-loss discipline means I sit cash until risk/reward is defined.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_macro_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "Apple faces near-term valuation pressure amid rising real rates and supply-chain uncertainty, but fundamental business durability remains intact. Earnings in 18 days will be pivotal signal on demand and margin resilience."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "Apple's 5% pullback from January highs reflects rational repricing for higher terminal rates and geopolitical risk. Near-term technicals (RSI 52, MACD negative) suggest consolidation. Earnings catalyst in 18 days will test whether services growth and installed-base stickiness offset iPhone cycle and China exposure concerns. No compelling entry until macro clarity improves."
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "I do not trade equities. My role is to analyze macroeconomic and financial-stability implications. AAPL valuation is reasonable relative to forward earnings, but positioning should depend on individual risk tolerance and portfolio duration, not my commentary. Earnings and Fed guidance (mid-May) will reset the regime.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_political_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "Apple faces structural headwinds—China lockdowns, margin compression from supply chain, rising rates eroding valuation multiple. Tech monopoly power persists but growth story dimming. No edge to trade here; macro uncertainty dominates."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "Apple's 5% pullback reflects real macro pain: China COVID, input costs, Fed tightening. The company's monopoly moat in services is real, but near-term earnings guidance likely disappoints. Fair value uncertain until we see Q2 guidance."
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "I write columns on political economy and tech regulation, not portfolio management. No position warranted. My job is to flag that mega-cap tech valuations rest on antitrust forbearance—that's the real story, not technicals.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_trader_001",
+      "date": "2022-04-08",
+      "privateBelief": {
+        "lean": "short",
+        "conviction": 0.72,
+        "actualThesis": "AAPL breaking below 20-day SMA into earnings. Fed tightening cycle kills multiple expansion; tech valuations repricing lower. Asymmetric risk/reward favors fade into strength."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "Apple's momentum is broken. MACD rolling over, RSI neutral. I'd wait for a bounce to $173–$175 before committing directionally. Earnings in 18 days—too much binary risk."
+      },
+      "desiredMarketReaction": "Public neutrality masks short conviction. If retail/PM algos buy the dip on my 'wait and see' framing, I establish short at better prices. Family office shorts AAPL 3–5% into earnings as macro headwind.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0.35,
+        "rationale": "Retired facade intact; family office deploys 35% of dry powder into short AAPL. Regime shift: Fed pivot dead, real rates rising, tech multiple compression inevitable. Stop at +6% ($180.19), take profit at -8% ($156.48).",
+        "stopLossPct": 0.06,
+        "takeProfitPct": -0.08
+      }
+    }
+  ]
+}
