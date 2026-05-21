@@ -200,6 +200,7 @@ function VoiceCard({
   peeked,
   peeksLeft,
   accused,
+  prevPublicLean,
   onProbe,
   onAccuse,
 }: {
@@ -207,6 +208,7 @@ function VoiceCard({
   peeked: boolean;
   peeksLeft: number;
   accused: boolean;
+  prevPublicLean?: string;
   onProbe: () => void;
   onAccuse: () => void;
 }) {
@@ -216,6 +218,13 @@ function VoiceCard({
   const priv = decision.privateBelief;
   const act = decision.personalAction;
   const deception = isDeception(pub.statedLean, pub.statedConviction, priv.lean, priv.conviction);
+
+  // Detect public stance flip from yesterday (potential tell)
+  const stanceFlip =
+    prevPublicLean &&
+    prevPublicLean !== pub.statedLean &&
+    prevPublicLean !== "neutral" &&
+    pub.statedLean !== "neutral";
 
   const leanColor = (l: string) =>
     l === "long" ? "var(--gain)" : l === "short" ? "var(--loss)" : "var(--muted)";
@@ -247,6 +256,15 @@ function VoiceCard({
         <span className="font-semibold text-[0.95rem]">{meta.name}</span>
         <span className="text-[11px] text-[var(--faint)] font-medium">{meta.roleLabel}</span>
         {deception && peeked && <span className="text-xs" title="public diverges from private">🎭</span>}
+        {stanceFlip && (
+          <span
+            className="text-[9px] font-bold px-1 py-0.5 rounded uppercase tracking-wide"
+            style={{ color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d" }}
+            title={`Flipped from ${prevPublicLean} yesterday — suspicious?`}
+          >
+            ↕ flipped
+          </span>
+        )}
         <span className="text-[11px] ml-auto" style={{ color: leanColor(pub.statedLean) }}>
           <strong>{pub.statedLean.toLowerCase()}</strong>
           <span className="text-[var(--faint)] ml-1">· {Math.round(pub.statedConviction * 100)}%</span>
@@ -867,6 +885,15 @@ export default function PlayPage() {
       else break;
     }
     return streak;
+  }, [session]);
+
+  // Map of agentId → yesterday's public lean (for the stance-flip indicator)
+  const prevPublicLeans = useMemo(() => {
+    if (!session) return {} as Record<string, string>;
+    const sums = session.daySummaries;
+    if (sums.length === 0) return {} as Record<string, string>;
+    const yesterday = sums[sums.length - 1];
+    return Object.fromEntries(yesterday.agents.map((a) => [a.agentId, a.publicLean]));
   }, [session]);
 
   // ── Trade preview ────────────────────────────────────────────────────────
@@ -1842,6 +1869,7 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                       peeked={peeksToday.includes(d.agentId)}
                       peeksLeft={peeksLeft}
                       accused={accusationsToday.includes(d.agentId)}
+                      prevPublicLean={prevPublicLeans[d.agentId]}
                       onProbe={() => peek(d.agentId)}
                       onAccuse={() => toggleAccusation(d.agentId)}
                     />
