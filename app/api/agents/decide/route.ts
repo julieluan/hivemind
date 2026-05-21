@@ -288,44 +288,59 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  const results = await Promise.allSettled(tasks);
-
-  const decisions: AgentDecision[] = [];
+  // Stream decisions as they complete (NDJSON) so the UI can show
+  // agent cards arriving one-by-one instead of a 20s blank wait.
+  // Each line: {"decision": AgentDecision, "done": false}
+  // Final line:  {"done": true, "latencyMs": N, "errors": [...]}
+  const encoder = new TextEncoder();
+  const allDecisions: AgentDecision[] = [];
   const errors: { agentId: string; error: string }[] = [];
-  const costUsd = 0;
 
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    if (r.status === "rejected") {
-      // Even on a hard reject, render a fallback for that agent so all 11 appear
-      const agent = getAgent(agentIds[i]);
-      decisions.push(
-        fallbackDecision({
-          agentId: agentIds[i],
-          date: body.date,
-          agentName: agent?.name ?? agentIds[i],
-          agentRole: agent?.role ?? "unknown",
-          noteSuffix: " [task rejected]",
+  const stream = new ReadableStream({
+    async start(controller) {
+      // Wire each task to emit a chunk immediately on completion
+      const wired = tasks.map((task, i) =>
+        task.then((result) => {
+          const decision = result.decision;
+          allDecisions.push(decision);
+          if (result.error)
+            errors.push({ agentId: agentIds[i], error: result.error });
+          const chunk = JSON.stringify({ decision }) + "\n";
+          controller.enqueue(encoder.encode(chunk));
+        }).catch((reason) => {
+          const agent = getAgent(agentIds[i]);
+          const fb = fallbackDecision({
+            agentId: agentIds[i],
+            date: body.date,
+            agentName: agent?.name ?? agentIds[i],
+            agentRole: agent?.role ?? "unknown",
+            noteSuffix: " [task rejected]",
+          });
+          allDecisions.push(fb);
+          errors.push({ agentId: agentIds[i], error: String(reason).slice(0, 200) });
+          controller.enqueue(encoder.encode(JSON.stringify({ decision: fb }) + "\n"));
         })
       );
-      errors.push({ agentId: agentIds[i], error: String(r.reason).slice(0, 200) });
-      continue;
-    }
-    decisions.push(r.value.decision);
-    if (r.value.error) errors.push({ agentId: agentIds[i], error: r.value.error });
-  }
 
-  // Write-through cache: persist successful canonical runs so the next
-  // player gets them for free. No-op in prod (read-only fs).
-  if (isCacheable && errors.length === 0 && decisions.length > 0) {
-    await writeCache(body.ticker, body.date, decisions);
-  }
+      await Promise.allSettled(wired);
 
-  const resp: DecideResponse = {
-    decisions,
-    costUsd,
-    latencyMs: Date.now() - start,
-    errors: errors.length ? errors : undefined,
-  };
-  return NextResponse.json(resp);
+      // Write-through cache for canonical runs
+      if (isCacheable && errors.length === 0 && allDecisions.length > 0) {
+        await writeCache(body.ticker, body.date, allDecisions);
+      }
+
+      // Final sentinel
+      const sentinel = JSON.stringify({
+        done: true,
+        latencyMs: Date.now() - start,
+        errors: errors.length ? errors : undefined,
+      }) + "\n";
+      controller.enqueue(encoder.encode(sentinel));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "Content-Type": "application/x-ndjson; charset=utf-8" },
+  });
 }
