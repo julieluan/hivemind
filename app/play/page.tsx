@@ -15,6 +15,7 @@ import { computeIndicators } from "@/lib/price-engine";
 import { HIVE_AGENTS_BY_ID, fmtMoney, isDeception } from "@/lib/agent-meta";
 import { StreamlitChart, type RangeKey, type Overlay } from "@/components/StreamlitChart";
 import { Tutorial, type TutorialStep } from "@/components/Tutorial";
+import { AgentAvatar } from "@/components/AgentAvatar";
 
 // ────────────────────────────────────────────────────────────────
 // What-if scenarios — same shape as Streamlit's SCENARIOS dict
@@ -237,7 +238,12 @@ function VoiceCard({
         accused ? "border-l-[3px] border-l-[var(--loss)] pl-2 -ml-2 bg-red-50/30" : ""
       }`}
     >
-      <div className="flex items-baseline gap-2 flex-wrap mb-1">
+      <div className="flex items-center gap-2 flex-wrap mb-1">
+        <AgentAvatar
+          agentId={decision.agentId}
+          size={32}
+          ring={accused ? "accuse" : peeked ? "peek" : null}
+        />
         <span className="font-semibold text-[0.95rem]">{meta.name}</span>
         <span className="text-[11px] text-[var(--faint)] font-medium">{meta.roleLabel}</span>
         {deception && peeked && <span className="text-xs" title="public diverges from private">🎭</span>}
@@ -1865,26 +1871,39 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                 return ((mark - p.initialCapital) / p.initialCapital) * 100;
               };
               const rows = [
-                { name: "You", role: "the twelfth trader", pnl: pnlPct, you: true },
-                { name: "Buy & Hold", role: "passive index", pnl: bhPnl, you: false },
+                { name: "You", role: "the twelfth trader", pnl: pnlPct, you: true, agentId: null as string | null },
+                { name: "Buy & Hold", role: "passive index", pnl: bhPnl, you: false, agentId: null as string | null },
                 ...ALL_AGENTS.filter((a) => a.hasPortfolio && a.capital > 0).map((a) => ({
                   name: HIVE_AGENTS_BY_ID[a.id]?.name ?? a.name,
                   role: HIVE_AGENTS_BY_ID[a.id]?.roleLabel ?? a.role,
                   pnl: liveAgentPnl(a.id),
                   you: false,
+                  agentId: a.id as string | null,
                 })),
               ].sort((a, b) => b.pnl - a.pnl);
               return rows.map((r, i) => (
                 <div
                   key={r.name}
-                  className={`grid grid-cols-[40px_1fr_80px] gap-2 py-2 border-b border-[var(--grid)] items-baseline ${
+                  className={`grid grid-cols-[40px_1fr_80px] gap-2 py-2 border-b border-[var(--grid)] items-center ${
                     r.you ? "bg-[var(--hint)] rounded -mx-1 px-1" : ""
                   }`}
                 >
                   <span className="text-[var(--faint)] num">#{i + 1}</span>
-                  <span>
-                    <span className="font-semibold">{r.name}</span>
-                    <span className="text-[var(--faint)] text-[11px] ml-2">{r.role}</span>
+                  <span className="flex items-center gap-2 min-w-0">
+                    {r.agentId ? (
+                      <AgentAvatar agentId={r.agentId} size={24} />
+                    ) : (
+                      <div
+                        className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold"
+                        style={{ background: r.you ? "#f59e0b" : "#94a3b8" }}
+                      >
+                        {r.you ? "👤" : "📊"}
+                      </div>
+                    )}
+                    <span className="truncate">
+                      <span className="font-semibold">{r.name}</span>
+                      <span className="text-[var(--faint)] text-[11px] ml-2">{r.role}</span>
+                    </span>
                   </span>
                   <span
                     className={`text-right font-mono font-semibold num ${
