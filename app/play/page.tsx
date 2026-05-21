@@ -628,6 +628,8 @@ export default function PlayPage() {
   const [llmReactLoading, setLlmReactLoading] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [dayResult, setDayResult] = useState<DayResult | null>(null);
+  // Decisions that have streamed in but loadDay hasn't been called yet
+  const [streamingDecisions, setStreamingDecisions] = useState<AgentDecision[]>([]);
 
   // Tutorial spotlight targets
   const chartRef = useRef<HTMLDivElement>(null);
@@ -710,7 +712,7 @@ export default function PlayPage() {
         setTodayNews([]);
         return [];
       })
-      .then((headlines: string[]) => {
+      .then(async (headlines: string[]) => {
         const market: MarketContext = {
           ticker: session.ticker,
           asOfDate: todayBar.date,
@@ -723,24 +725,60 @@ export default function PlayPage() {
           bbLower: inds.bbLower ?? undefined,
           mom5d: inds.mom5d ?? undefined,
         };
-        setAgentStatus(`11 agents thinking… (${todayBar.date})`);
-        return fetch("/api/agents/decide", {
+        setAgentStatus(`agents deliberating…`);
+        setStreamingDecisions([]);
+
+        const resp = await fetch("/api/agents/decide", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ticker: session.ticker, date: todayBar.date, market, user: session.user }),
-        }).then((r) => r.json().then((j) => ({ j, market })));
-      })
-      .then(async ({ j, market }: { j: { decisions: AgentDecision[]; errors?: { agentId: string; error: string }[] }; market: MarketContext }) => {
+        });
+        if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}`);
+
+        // NDJSON streaming: each line is {"decision": AgentDecision} or {"done":true,...}
+        const reader = resp.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        const allDecisions: AgentDecision[] = [];
+        let finalErrors: { agentId: string; error: string }[] | undefined;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const obj = JSON.parse(line) as
+                | { decision: AgentDecision }
+                | { done: true; latencyMs: number; errors?: { agentId: string; error: string }[] };
+              if ("done" in obj && obj.done) {
+                finalErrors = obj.errors;
+              } else if ("decision" in obj) {
+                allDecisions.push(obj.decision);
+                // Update streaming preview after each agent arrives
+                setStreamingDecisions((prev) => [...prev, obj.decision]);
+              }
+            } catch {
+              // Malformed chunk — skip
+            }
+          }
+        }
+
+        // Clear streaming preview and load the day with final decisions
+        setStreamingDecisions([]);
         const totalCap = ALL_AGENTS.filter((a) => a.hasPortfolio).reduce((s, a) => s + a.capital, 0);
         const aggResp = await fetch("/api/game/aggregate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ decisions: j.decisions, agents: ALL_AGENTS, totalCapital: totalCap }),
+          body: JSON.stringify({ decisions: allDecisions, agents: ALL_AGENTS, totalCapital: totalCap }),
         });
         const agg = (await aggResp.json()) as AggregateResponse;
-        loadDay(todayBar.date, j.decisions, market, agg);
+        loadDay(todayBar.date, allDecisions, market, agg);
         setAgentStatus("");
-        setAgentErrors(j.errors ?? []);
+        setAgentErrors(finalErrors ?? []);
       })
       .catch((e) => setAgentStatus(`agents unreachable: ${e}`));
   }, [session, allPrices, today, loadDay]);
@@ -1707,7 +1745,11 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                 <div className="text-xs text-[var(--loss)] mt-2">⚠ {pricesError}</div>
               )}
               {agentStatus && (
-                <div className="text-xs text-[var(--muted)] mt-2 font-mono">{agentStatus}</div>
+                <div className="text-xs text-[var(--muted)] mt-2 font-mono">
+                  {streamingDecisions.length > 0
+                    ? `${streamingDecisions.length}/11 agents posted…`
+                    : agentStatus}
+                </div>
               )}
             </div>
 
@@ -1786,13 +1828,14 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                   </details>
                 )}
               </div>
-              {rankedDecisions.length === 0 ? (
+              {rankedDecisions.length === 0 && streamingDecisions.length === 0 ? (
                 <div className="text-sm text-[var(--muted)] py-8 text-center italic">
-                  agents forming their views…
+                  {agentStatus ? "agents deliberating…" : "agents forming their views…"}
                 </div>
               ) : (
                 <div className="max-h-[520px] overflow-y-auto pr-2 -mr-2">
-                  {rankedDecisions.map((d) => (
+                  {/* Show fully-loaded decisions if available, else streaming preview */}
+                  {(rankedDecisions.length > 0 ? rankedDecisions : streamingDecisions).map((d) => (
                     <VoiceCard
                       key={d.agentId}
                       decision={d}
@@ -1803,6 +1846,36 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
                       onAccuse={() => toggleAccusation(d.agentId)}
                     />
                   ))}
+                  {/* Skeleton placeholder for remaining streaming agents */}
+                  {rankedDecisions.length === 0 && streamingDecisions.length < 11 &&
+                    Array.from({ length: Math.min(11 - streamingDecisions.length, 3) }).map((_, i) => {
+                      const placeholderAgent = ALL_AGENTS.filter(a => a.role !== "cta_forced")[
+                        streamingDecisions.length + i
+                      ];
+                      const meta = placeholderAgent ? HIVE_AGENTS_BY_ID[placeholderAgent.id] : null;
+                      return (
+                        <div
+                          key={`skeleton-${i}`}
+                          className="py-3 border-t border-[var(--grid)] first:border-t-0 animate-pulse"
+                        >
+                          <div className="flex items-center gap-2">
+                            {meta ? (
+                              <AgentAvatar agentId={placeholderAgent!.id} size={40} />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-[var(--bg-soft)]" />
+                            )}
+                            <div className="flex-1">
+                              <div className="h-3 bg-[var(--bg-soft)] rounded w-24 mb-1.5" />
+                              <div className="h-2 bg-[var(--bg-soft)] rounded w-40" />
+                            </div>
+                            <div className="h-3 bg-[var(--bg-soft)] rounded w-12" />
+                          </div>
+                          <div className="mt-2 h-2.5 bg-[var(--bg-soft)] rounded w-full" />
+                          <div className="mt-1 h-2.5 bg-[var(--bg-soft)] rounded w-4/5" />
+                        </div>
+                      );
+                    })
+                  }
                 </div>
               )}
             </div>
