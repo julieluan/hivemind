@@ -38,7 +38,7 @@ export const SCENARIOS: Scenario[] = [
     blurb: "Hot tape going into a sharp -17% drawdown. Macro panic kicks in mid-run.",
     badge: "bear",
     bhReturnPct: -17.0,
-    newsCoverage: 9,
+    newsCoverage: 26,
   },
   {
     id: "apr-2022",
