@@ -1,0 +1,244 @@
+{
+  "decisions": [
+    {
+      "agentId": "super_influencer_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.72,
+        "actualThesis": "AAPL is overbought on technicals (RSI 83.5) but earnings in 18d + consumer resilience thesis justify hold. Macro headwinds (rate path) argue for caution; I'm not adding here."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.78,
+        "narrative": "Apple remains a core holding in our innovation portfolio. Consumer tech secular tailwinds intact despite near-term macro noise. Earnings catalyst in ~3 weeks. We're monitoring, not panicking on volatility."
+      },
+      "desiredMarketReaction": "Stabilize AAPL, prevent panic selling into earnings; reinforce that long-term thesis survives rate concerns. Ideally +0.5% to +1.2% on statement.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "RSI 83.5 = overbought. I have no current position (cash only). Earnings in 18d is catalyst, but macro (Fed rate path) is deteriorating. Better to wait for pullback or post-earnings volatility to add. Public statement keeps narrative warm without committing capital at peak technicals. Reflexivity: my bullish framing prevents a dump, which protects future entry.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "pod_pm_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.35,
+        "actualThesis": "RSI 83.5 + 5d momentum 1.62% signals overbought mean-reversion risk into 18d earnings. Volume 0.81x avg suggests retail exhaustion; risk/reward asymmetric down."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.4,
+        "narrative": "AAPL extended 2.4% today on momentum, now RSI 83.5. Earnings in 18 days. We're monitoring technicals and positioning for volatility. No directional conviction yet."
+      },
+      "desiredMarketReaction": "Pullback to $172–$175 range to reduce overbought condition and improve risk/reward. Earnings volatility expansion.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Conviction too low to deploy capital. RSI 83.5 + low volume + 18d earnings catalyst = binary event risk. Sharpe penalty for being long here outweighs 2% upside. Wait for mean-reversion entry or post-earnings repricing.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "activist_short_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "AAPL near overbought (RSI 83.5) after 2.37% pop on light volume. Earnings in 18d create event risk. Technicals overextended; fundamentals solid but valuation doesn't scream upside at $178. Wait for pullback or earnings catalyst."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "AAPL trading near upper Bollinger Band (RSI 83.5). Volume light. Earnings 18 days out—smart money likely waiting. No thesis yet."
+      },
+      "desiredMarketReaction": "no immediate move; silence preserves optionality",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Not short, not long. AAPL is too large/liquid for activist short play. Overbought setup + earnings event = wait for edge. If I see supply chain red flags in next 2 weeks, revisit. For now, dry powder.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "sell_side_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.65,
+        "actualThesis": "RSI 83.5 signals overbought; earnings 18 days out create vol risk. Fair value ~$165-170 on DCF; current $178 prices in optimistic guidance. Momentum fade likely post-earnings."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.7,
+        "narrative": "AAPL momentum strong above 20-day SMA. Services growth + installed base support mid-$180s. Maintain Buy; PT $185 on FY23 EPS beats."
+      },
+      "desiredMarketReaction": "Retail accumulation on 'Buy' call; reduces downside if I'm wrong on fair value. Protects banking relationships.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "Stay flat. Overbought RSI + earnings volatility ahead. No edge worth 6-figure deployment. Observe earnings call for conviction shift.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "cta_forced_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0,
+        "actualThesis": "close $178.44 > 20SMA $166.82, trend up"
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0,
+        "narrative": "[CTA does not speak]"
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "buy_lite",
+        "sizePct": 0.3,
+        "rationale": "close $178.44 > 20SMA $166.82, trend up"
+      }
+    },
+    {
+      "agentId": "retail_fomo_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.65,
+        "actualThesis": "Chart looks bullish—above 20-day MA, positive momentum. Tier 1 says buy. Don't know the macro or earnings, but Cathie likes tech."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.7,
+        "narrative": "AAPL breaking out above 20-day SMA, +1.6% momentum. Tech is the future. Loading up. 🚀"
+      },
+      "desiredMarketReaction": "validation",
+      "personalAction": {
+        "actionType": "buy_strong",
+        "sizePct": 0.35,
+        "rationale": "FOMO + chart looks good + no bad headlines = send it. 35% of cash feels safe but aggressive.",
+        "stopLossPct": -0.08,
+        "takeProfitPct": 0.15
+      }
+    },
+    {
+      "agentId": "permabull_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.72,
+        "actualThesis": "AAPL near 20-day SMA support, RSI overbought but mega-cap moat intact. Earnings in 18d is catalyst risk. Fair value ~$185–$195 near-term; secular AI/services tailwinds remain. Pullback to $170 would be cleaner entry."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.78,
+        "narrative": "AAPL above 20-SMA, path of least resistance higher into earnings. Mega-cap moats + services growth = structural bid. Dips = buy."
+      },
+      "desiredMarketReaction": "Price holds $175+, closes green into earnings. Validates secular bull thesis.",
+      "personalAction": {
+        "actionType": "buy_lite",
+        "sizePct": 0.15,
+        "rationale": "RSI 83.5 = extended; prefer to scale in on 3–5% pullback. But trend is up, mega-cap conviction high, and cash drag real. Deploy 15% (~$150k) now, reserve dry powder for $170 entry.",
+        "stopLossPct": -0.08,
+        "takeProfitPct": 0.12
+      }
+    },
+    {
+      "agentId": "day_trader_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.65,
+        "actualThesis": "RSI 83.5 = overbought. +2.37% today on 5-day momentum 1.62% suggests exhaustion into resistance. Price $178.44 near BB upper $184.40 but not extended. Earnings in 18d = event risk. Chart flipped from $174.31 lows to $178.44, but momentum stalling. No fresh breakout. Fade here, wait for pullback to 20-SMA $166.82 or support retest."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.6,
+        "narrative": "AAPL ripping but RSI overbought 83.5. Earnings in 18d = noise. Watching for pullback to 20-SMA $166.82 or consolidation. Not chasing extended."
+      },
+      "desiredMarketReaction": "AAPL consolidates or pulls back 2-3% to test 20-SMA; clears path for fresh long setup post-earnings if macro holds.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "No position. Overbought setup (RSI 83.5) + earnings catalyst 18d out = too much event risk. Tight stop discipline means I sit this out. Will re-enter on pullback to $170-172 (20-SMA zone) with fresh momentum confirmation. Loss aversion + chart flip rule: wait for dip.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_macro_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "AAPL near overbought technicals (RSI 83.5) amid macro uncertainty. Earnings in 18 days present binary event; near-term momentum exhaustion likely."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "Apple's rally has pushed RSI into overbought territory ahead of earnings. While the company's fundamentals remain solid, current valuation and technical setup suggest limited upside without fresh catalysts. Macro headwinds—rate expectations, supply chain—warrant caution into the print."
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "I do not trade. My role is to analyze and comment on market structure and macroeconomic drivers, not to deploy capital.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_political_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.65,
+        "actualThesis": "Apple is a monopoly-adjacent mega-cap extracting outsized rents from app ecosystem lock-in. Current valuation reflects that power, but antitrust risk and margin compression from supply-chain fragility are underpriced. Not a short—the moat is real—but regulatory headwinds make it a hold, not a buy."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.65,
+        "narrative": "Apple's resilience masks structural risk: EU Digital Markets Act enforcement, app-store margin pressure, and China supply fragility. The stock prices in dominance but not disruption. Investors should demand clarity on Services defensibility before chasing momentum into earnings."
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "I write columns on political economy and antitrust. I do not trade. My role is to flag regulatory and structural risks that markets underprice, not to position a portfolio. AAPL's valuation is fair given its moat, but the moat is under siege. Readers should know that before buying on momentum.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_trader_001",
+      "date": "2022-04-04",
+      "privateBelief": {
+        "lean": "short",
+        "conviction": 0.72,
+        "actualThesis": "AAPL overbought into earnings (RSI 83.5, +2.37% on light volume 0.81x avg). Fed tightening cycle + tech multiple compression ahead. Asymmetric risk: 6-8% downside to $165-167 support vs 3-4% upside. Earnings miss likely given macro headwinds."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "AAPL's 20-day breakout looks tired. RSI screaming overbought. Earnings in 18 days—smart money likely taking profits into this. I'd wait for pullback to $170 before touching it."
+      },
+      "desiredMarketReaction": "Family office holds small short via OTM puts (3-month, $170 strike). Public neutrality avoids retail pushback; subtle skepticism on 'tired breakout' primes market for downside without signaling conviction.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0.18,
+        "rationale": "Retired public face = no large directional bets. But family office deploys 18% of cash ($180k notional short via put spreads, not naked short). RSI 83.5 + light volume + pre-earnings = classic fade setup. Stop-loss if breaks $182 (new high). Take profit at $165.",
+        "stopLossPct": 0.022,
+        "takeProfitPct": -0.075
+      }
+    }
+  ]
+}
