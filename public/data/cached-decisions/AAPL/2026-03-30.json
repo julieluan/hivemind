@@ -1,0 +1,244 @@
+{
+  "decisions": [
+    {
+      "agentId": "super_influencer_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.72,
+        "actualThesis": "AAPL is oversold into earnings (RSI 28, -1.93% 5d momentum) after normal Q1 seasonal weakness. Institutional capitulation creates entry; AI narrative tailwinds remain intact for 2026-27."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.78,
+        "narrative": "Apple's pullback to $246 is a gift. Ignore the noise—AI integration roadmap, Services growth, and margin expansion are 2026 stories. We're accumulating into weakness ahead of earnings. Long-term thesis strengthening."
+      },
+      "desiredMarketReaction": "Stabilize AAPL intraday, attract retail FOMO into close, reduce put/call skew. Trigger +1.5% to +2.5% move by EOD as my conviction signal cascades through algos and CNBC followers.",
+      "personalAction": {
+        "actionType": "buy_strong",
+        "sizePct": 0.35,
+        "rationale": "RSI 28 + earnings in 18d + my $1M cash = ideal entry. 35% ($350M) deployment: (1) establishes visible position before public call, (2) builds conviction narrative credibility, (3) captures mean-reversion into earnings. I buy FIRST, then tweet/CNBC, then ride the reflexivity. Stop at -0.06 ($231.60) protects tail risk if macro breaks; take-profit at +0.12 ($276) captures post-earnings pop.",
+        "stopLossPct": -0.06,
+        "takeProfitPct": 0.12
+      }
+    },
+    {
+      "agentId": "pod_pm_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.62,
+        "actualThesis": "RSI 28 + price at lower BB band suggest mean-reversion setup; 18d to earnings reduces tail risk. Volume decline and 5d momentum are weak, but technicals are stretched oversold."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.45,
+        "narrative": "AAPL showing technical oversold conditions near lower Bollinger Band ahead of earnings. Waiting for volume confirmation before committing. Valuations remain reasonable on any dip."
+      },
+      "desiredMarketReaction": "Modest bounce to $250–252 on stabilizing volume; earnings beat to reduce tail risk and justify accumulation.",
+      "personalAction": {
+        "actionType": "buy_lite",
+        "sizePct": 0.08,
+        "rationale": "RSI 28 is textbook oversold; mean-reversion edge ~40–60 bps over next 5d. Earnings in 18d is a catalyst anchor. Sizing light (8% of cash = $80k notional) to respect low volume and preserve dry powder for better fills. Stop-loss at -4% protects vs. earnings shock; take-profit at +2% locks edge without overstaying.",
+        "stopLossPct": -0.04,
+        "takeProfitPct": 0.02
+      }
+    },
+    {
+      "agentId": "activist_short_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "AAPL near 52-week support, oversold RSI(14)=28 suggests tactical bounce risk. No fundamental catalyst visible in next 18d pre-earnings. Macro uncertainty high. Fair value ~$250-255 range; current $246.63 offers limited margin of safety given volatility."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "AAPL testing support ahead of earnings. Oversold technicals, but macro headwinds persist. Watching for institutional accumulation signals before committing."
+      },
+      "desiredMarketReaction": "none—stay silent to avoid telegraphing position; allow retail/algos to set tone",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "No conviction short yet. AAPL lacks the smoking-gun fundamental deterioration needed for a Hindenburg-style report. RSI oversold is mean-reversion bait, not activist thesis. Waiting for deeper research: supply chain, margin compression, China revenue cliff. If evidence emerges, establish small short (0.10–0.15 AUM) over 4–6 weeks. For now, observe.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "sell_side_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.65,
+        "actualThesis": "AAPL oversold on momentum but macro headwinds + valuation concerns persist. RSI 28 suggests bounce risk, but earnings in 18d carry execution risk. Fair value ~$245–$250 range; upside capped without margin expansion surprise."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.7,
+        "narrative": "AAPL trading near 2σ lower Bollinger Band with RSI 28 signals oversold conditions. Pre-earnings dip presents tactical accumulation opportunity. Maintain Buy with $265 PT; upside to Services growth + AI narrative."
+      },
+      "desiredMarketReaction": "Retail FOMO buying on 'oversold' narrative; short-term bounce to $252–$258 range before earnings volatility.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0.25,
+        "rationale": "Hedge conviction gap: public Buy protects IB relationships; personal sizing (25% = $250k) limits downside if earnings disappoint. RSI bounce + pre-earnings relief rally likely near-term, but capped by macro. Stop-loss at -4% locks discipline.",
+        "stopLossPct": -0.04,
+        "takeProfitPct": 0.08
+      }
+    },
+    {
+      "agentId": "cta_forced_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0,
+        "actualThesis": "close $246.63 < 20SMA $254.47, trend down"
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0,
+        "narrative": "[CTA does not speak]"
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "sell_lite",
+        "sizePct": 0.3,
+        "rationale": "close $246.63 < 20SMA $254.47, trend down"
+      }
+    },
+    {
+      "agentId": "retail_fomo_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.4,
+        "actualThesis": "Chart looks weak, below 20-day MA. No conviction either way—waiting for influencer take or clearer signal."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.4,
+        "narrative": "AAPL testing support, down 1.93% in 5d. Below 20-MA. Could bounce or roll over. Watching for Cathie/Cramer hot take before moving."
+      },
+      "desiredMarketReaction": "validation",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "No position yet. Too much cash, but don't have a strong narrative to justify entry. Need influencer confirmation or reversal candle to FOMO in. Scared of catching falling knife.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "permabull_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.72,
+        "actualThesis": "AAPL near 20-day SMA support ($254.47), RSI 28 = oversold. AI/services secular tailwinds intact. Pre-earnings dip = typical volatility. Fair value $280–290 12-month; current $246 offers 14% asymmetry. Earnings in 18d likely positive catalyst."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.78,
+        "narrative": "AAPL oversold into technicals. Path of least resistance is higher into earnings. Mega-cap moat + buyback support = dips are gifts. AI upside still underpriced."
+      },
+      "desiredMarketReaction": "price up; validate thesis; fund inflows follow conviction",
+      "personalAction": {
+        "actionType": "buy_lite",
+        "sizePct": 0.08,
+        "rationale": "RSI 28 + 5d momentum -1.93% = tactical entry. Keep powder dry for potential further weakness. $1M cash → $80k AAPL position (modest; earnings binary). Conviction 72% = not all-in.",
+        "stopLossPct": -0.06,
+        "takeProfitPct": 0.12
+      }
+    },
+    {
+      "agentId": "day_trader_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.65,
+        "actualThesis": "RSI 28 + price at BB lower band = oversold bounce setup. 5-day momentum crush suggests capitulation. 20-day SMA rejection but not a clean break; earnings in 18d adds vol premium. Chart wants to snap back to $250–$252 zone."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.65,
+        "narrative": "AAPL oversold at BB lower, RSI 28 screaming bounce. Chart wants $250 fast. Earnings vol in 18d = risk/reward skewed long here. Tight stop if 20-day fails."
+      },
+      "desiredMarketReaction": "Intraday bounce off $244–$246 support, reclaim $250+ by close or EOW.",
+      "personalAction": {
+        "actionType": "buy_lite",
+        "sizePct": 0.15,
+        "rationale": "RSI oversold + BB lower support = high-probability 1–2 day bounce. Sizing 15% ($150K notional) respects loss aversion; -5% stop = $12.3K max loss (1.2% portfolio). TP at +8% ($20.7K gain) captures bounce to $266.31 resistance zone. Exit if 20-day SMA ($254.47) breaks cleanly below; earnings binary risk forces tight hold window.",
+        "stopLossPct": -0.05,
+        "takeProfitPct": 0.08
+      }
+    },
+    {
+      "agentId": "economist_macro_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "AAPL near technical support; RSI oversold suggests mean reversion risk. Earnings in 18 days create binary event. Macro backdrop (rates, consumer) remains uncertain; no edge yet."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.5,
+        "narrative": "Apple trades near 20-day MA support with RSI at 28—textbook oversold. However, pre-earnings volatility and macro sensitivity (consumer spending, services growth) argue for patience. Q2 guidance will be the signal; technicals alone insufficient."
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "As an academic analyst, I do not trade. I observe that AAPL is tactically oversold but lacks macro conviction or earnings clarity. Holding cash. Will reassess post-earnings and Fed data.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_political_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "neutral",
+        "conviction": 0.55,
+        "actualThesis": "Apple faces structural margin pressure from EU antitrust enforcement and China competition. Valuation not yet punished; earnings miss risk in 18 days. Hold cash, wait for clarity."
+      },
+      "publicStatement": {
+        "statedLean": "neutral",
+        "statedConviction": 0.55,
+        "narrative": "Apple's services moat is real, but EU's app-store rules and Chinese rivals eroding pricing power. Earnings call will reveal whether management acknowledges margin compression. Oversold on technicals, not fundamentals. Wait."
+      },
+      "desiredMarketReaction": "n/a",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0,
+        "rationale": "I write columns on political economy and antitrust. I do not trade. Cash preserved for clarity post-earnings and regulatory developments.",
+        "stopLossPct": null,
+        "takeProfitPct": null
+      }
+    },
+    {
+      "agentId": "economist_trader_001",
+      "date": "2026-03-30",
+      "privateBelief": {
+        "lean": "long",
+        "conviction": 0.72,
+        "actualThesis": "AAPL oversold into earnings. RSI 28 is capitulation; stock bounced off BB lower band. Macro tailwind: Fed pivot narrative supports mega-cap multiple re-rating. Asymmetric risk/reward next 18 days into print."
+      },
+      "publicStatement": {
+        "statedLean": "long",
+        "statedConviction": 0.68,
+        "narrative": "AAPL is screaming buy here. RSI capitulation, technicals oversold, earnings catalyst in 18 days. If they beat, this reprices 5% intraday. I'm nibbling."
+      },
+      "desiredMarketReaction": "Retail follows Drucker long call → bid AAPL into earnings. Family office accumulates on dip before re-rating. Reduce crowding risk if too many retail pileup.",
+      "personalAction": {
+        "actionType": "hold",
+        "sizePct": 0.35,
+        "rationale": "Retired face, but family office is real. 35% cash deployment = $350K long AAPL. Conviction 72% = medium-size, not all-in. Stop at -6% ($231.43), take profit at +8% ($266.36). Earnings vol = my edge. Scale out 50% if RSI hits 70 before print.",
+        "stopLossPct": -0.06,
+        "takeProfitPct": 0.08
+      }
+    }
+  ]
+}
