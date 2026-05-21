@@ -1296,14 +1296,85 @@ private: ${entry.privateLean} ${Math.round(entry.privateConv * 100)}%${entry.dec
               </div>
             </div>
 
-            <div className="flex justify-center gap-2">
-              <button
-                onClick={reset}
-                className="bg-[var(--ink)] text-white px-6 py-2.5 rounded-md text-sm font-semibold hover:opacity-90"
-              >
-                ↻ Play again
-              </button>
-            </div>
+            {(() => {
+              const shareParams = new URLSearchParams({
+                tp: String(dTp),
+                fp: String(dFp),
+                fn: String(dFn),
+                pnl: pnlPct.toFixed(2),
+                beat: String(agentsBeaten),
+                total: String(totalAgents),
+                days: String(daysPlayed),
+              });
+              const shareRelative = `/share?${shareParams.toString()}`;
+              const shareAbsolute =
+                typeof window !== "undefined"
+                  ? `${window.location.origin}${shareRelative}`
+                  : shareRelative;
+              const tweetText =
+                totalFlags > 0
+                  ? `I caught ${dTp} liars in Hivemind 🕵️ (net ${netDetection >= 0 ? "+" : ""}${netDetection}). Beat ${agentsBeaten}/${totalAgents} AI traders in ${daysPlayed} days.`
+                  : `Played Hivemind: beat ${agentsBeaten}/${totalAgents} AI traders in ${daysPlayed} days. ${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}% return.`;
+              const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(shareAbsolute)}`;
+
+              return (
+                <>
+                  <div className="text-center text-[11px] uppercase tracking-[0.1em] text-[var(--muted)] font-bold mb-2">
+                    Share your run
+                  </div>
+                  <div className="flex justify-center gap-2 flex-wrap mb-3">
+                    <a
+                      href={tweetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 bg-white border border-[var(--border)] hover:border-[var(--ink)] text-[var(--ink)] px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                    >
+                      𝕏 Share on X
+                    </a>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(shareAbsolute);
+                          const el = document.getElementById("copy-feedback");
+                          if (el) {
+                            el.textContent = "Link copied ✓";
+                            setTimeout(() => {
+                              if (el) el.textContent = "";
+                            }, 1800);
+                          }
+                        } catch {
+                          window.prompt("Copy this link:", shareAbsolute);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 bg-white border border-[var(--border)] hover:border-[var(--ink)] text-[var(--ink)] px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                    >
+                      🔗 Copy link
+                    </button>
+                    <a
+                      href={shareRelative}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 bg-white border border-[var(--border)] hover:border-[var(--ink)] text-[var(--ink)] px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                      title="Preview the share card"
+                    >
+                      👁 Preview card
+                    </a>
+                  </div>
+                  <div
+                    id="copy-feedback"
+                    className="text-center text-xs text-[var(--gain)] mb-3 h-4 font-semibold"
+                  />
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={reset}
+                      className="bg-[var(--ink)] text-white px-6 py-2.5 rounded-md text-sm font-semibold hover:opacity-90"
+                    >
+                      ↻ Play again
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         );
       })()}
