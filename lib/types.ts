@@ -158,6 +158,8 @@ export interface GameSession {
   trades: TradeRecord[];
   // Peek mechanic: 3/day reveals of private_belief
   peeksByDate: Record<string, string[]>; // date → agentIds revealed that day
+  // Accuse mechanic: which agents the player flagged as lying on each day
+  accusationsByDate: Record<string, string[]>; // date → agentIds flagged that day
   // Per-day journey for the end-game recap
   daySummaries: DaySummary[];
   // Each agent's live book after applying their personal_action each day
